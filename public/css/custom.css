@@ -1,0 +1,153 @@
+/* public/css/custom.css */
+
+/* --- Hover efek baris tabel --- */
+.table tbody tr {
+    transition: background-color 0.3s ease, transform 0.18s ease, box-shadow 0.18s ease;
+    transform-origin: left center;
+}
+.table tbody tr:hover {
+    background-color: #f8f9fa; /* lembut, tetap cocok dengan Bootstrap */
+    transform: translateY(-2px) scale(1.002);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.04);
+}
+
+/* --- Tombol (semua .btn) animasi scale & shadow --- */
+.btn {
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+    will-change: transform;
+}
+.btn:hover {
+    transform: translateY(-2px) scale(1.05);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+}
+
+/* --- Khusus tombol utama (Tambah Buku) : subtle pulse on hover --- */
+.hover-scale {
+    transition: transform 0.22s cubic-bezier(.2,.9,.2,1), box-shadow 0.22s;
+}
+.hover-scale:hover {
+    transform: translateY(-3px) scale(1.08);
+    box-shadow: 0 10px 22px rgba(0,0,0,0.12);
+}
+
+/* --- Fade-in container / tabel --- */
+.fade-in {
+    opacity: 0;
+    transform: translateY(8px);
+    animation: fadeInUp 0.5s ease forwards;
+}
+@keyframes fadeInUp {
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* --- Staggered row animation (applied by JS) --- */
+.row-appear {
+    opacity: 0;
+    transform: translateY(6px);
+    animation: rowFadeUp 0.42s ease forwards;
+}
+@keyframes rowFadeUp {
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* --- Optional small style for action buttons spacing --- */
+.table .btn {
+    margin-right: 6px;
+}
+
+/* Semua link sidebar tetap putih */
+.nav-link,
+.nav-link.dropdown-toggle {
+    color: #fff !important;
+}
+
+/* Hover efek abu-abu lembut */
+.nav-link:hover,
+.nav-link.dropdown-toggle:hover {
+    color: #fff !important;
+    background-color: #495057 !important;
+    border-radius: 6px;
+}
+
+/* Dropdown item tetap putih */
+.dropdown-menu.bg-dark .dropdown-item {
+    color: #fff !important;
+}
+
+/* Dropdown hover abu-abu */
+.dropdown-menu.bg-dark .dropdown-item:hover {
+    background-color: #495057 !important;
+    border-radius: 6px;
+}
+
+/* --- Modal: cukup atur z-index aja, biar gak ketelen --- */
+.modal {
+    z-index: 1055 !important;
+}
+.modal-backdrop {
+    z-index: 1050 !important;
+}
+
+/* Style untuk card dashboard */
+.dashboard-card {
+    transition: transform 0.2s, box-shadow 0.3s;
+    border-radius: 15px;
+}
+.dashboard-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
+/* About Section */
+.about-section {
+    background: #ffffff;
+    border-left: 5px solid #0d6efd;
+    transition: background 0.3s, color 0.3s;
+}
+
+/* Dark Mode Adaptif */
+body.dark-mode .dashboard-card {
+    background-color: #2a2a3c;
+    color: #f1f1f1;
+}
+body.dark-mode .about-section {
+    background-color: #2a2a3c;
+    border-left: 5px solid #0dcaf0;
+    color: #f1f1f1;
+}
+/* Styling untuk judul menu di sidebar */
+.menu-title {
+    color: #ffffff;          /* Bikin teks putih */
+    font-weight: 600;        /* Tebelin biar mirip heading */
+    font-size: 0.85rem;      /* Ukuran agak kecil */
+    text-transform: uppercase; /* Huruf kapital semua */
+    padding: 5px 5px 5px;  /* Spasi biar rapi */
+    letter-spacing: 1px;     /* Jarak antar huruf */
+    opacity: 0.8;            /* Biar agak soft putihnya */
+
+
+}
+
+/* Paksa hilang scroll vertikal */
+html, body {
+    height: 100vh;        /* layar fix 1 halaman */
+    overflow-y: hidden !important; /* jangan kasih scroll vertikal */
+    margin: 0;
+    padding: 0;
+}
+
+/* Bungkus tabel biar gak bikin scroll tambahan */
+.table-responsive,
+.dataTables_wrapper {
+    max-height: 100%;  /* biar gak lebih dari layar */
+    overflow-y: hidden !important;
+}
+
+/* Hilangkan margin bawah pagination yang suka bikin scroll */
+.pagination,
+.dataTables_paginate,
+.d-flex.justify-content-center {
+    margin-bottom: 0 !important;
+    padding-bottom: 0 !important;
+}
+
