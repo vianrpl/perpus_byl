@@ -12,10 +12,21 @@ use App\Http\Controllers\KategorisController;
 use App\Http\Controllers\SubKategorisController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\PenataanBukusController;
+use App\Http\Controllers\PeminjamanController;
 
 Route::get('/get-rak-by-buku/{id_buku}', [App\Http\Controllers\PenataanBukusController::class, 'getRakByBuku']);
 Route::get('/raks/{id_rak}', [RaksController::class, 'show'])->name('raks.show');
 Route::get('/get-bukus-for-selection', [App\Http\Controllers\BukusController::class, 'getForSelection']);
+
+//peminjaman route
+// 📗 Peminjaman
+Route::get('/peminjaman', [PeminjamanController::class, 'index'])->name('peminjaman.index');
+Route::get('/peminjaman/notif', [PeminjamanController::class, 'notif'])->name('peminjaman.notif');
+Route::post('/buku_items/{id}/pinjam', [BukuItemsController::class, 'pinjam'])->name('buku_items.pinjam');
+Route::post('/peminjaman/{id}/approve', [PeminjamanController::class, 'approve'])->name('peminjaman.approve');
+Route::post('/peminjaman/{id}/reject', [PeminjamanController::class, 'reject'])->name('peminjaman.reject');
+Route::post('/peminjaman/{id}/kembalikan', [PeminjamanController::class, 'return'])->name('peminjaman.kembalikan');
+Route::put('/peminjaman/{id}/update', [PeminjamanController::class, 'update'])->name('peminjaman.update');
 
 
 // ==========================

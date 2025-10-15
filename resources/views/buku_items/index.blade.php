@@ -71,6 +71,14 @@
                                 Hapus
                             </button>
                         @endunless
+
+                        @unless(Auth::user()->role === 'konsumen')
+                            <button type="button" class="btn btn-primary btn-sm"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#pinjamModal{{$item->id_item}}">
+                                Pinjam
+                            </button>
+                        @endunless
                     </td>
                 </tr>
             @empty
@@ -241,5 +249,64 @@
                 </div>
             </div>
         </div>
+
+        <!-- Modal -->
+        <div class="modal fade" id="pinjamModal{{$item->id_item}}" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <form id="pinjamForm{{$item->id_item}}">
+                    @csrf
+                    <input type="hidden" name="id_item" value="{{ $item->id_item }}">
+                    <input type="hidden" name="id_buku" value="{{ $buku->id_buku }}">
+                    <div class="modal-content">
+                        <div class="modal-header"><h5>Form Pinjam</h5></div>
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label>Tanggal Pengembalian</label>
+                                <input type="date" name="pengembalian" class="form-control" required>
+                            </div>
+                            <div class="mb-3">
+                                <label>Alamat</label>
+                                <input type="text" name="alamat" class="form-control">
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                            <button class="btn btn-primary" id="submitPinjam">Kirim Permintaan</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <script>
+            document.addEventListener('DOMContentLoaded', function(){
+                document.querySelectorAll('form[id^="pinjamForm"]').forEach(form => {
+                    form.addEventListener('submit', function(e){
+                        e.preventDefault();
+                        const formData = new FormData(this);
+                        const itemId = formData.get('id_item');
+
+                        fetch(`/buku_items/${itemId}/pinjam`, {
+                            method: 'POST',
+                            headers: {'X-CSRF-TOKEN': '{{ csrf_token() }}'},
+                            body: formData
+                        })
+                            .then(r => r.json())
+                            .then(res => {
+                                if(res.success){
+                                    alert(res.message);
+                                    location.reload();
+                                } else {
+                                    alert('Error: ' + (res.message || 'gagal'));
+                                }
+                            })
+                            .catch(err => {
+                                alert('Error koneksi');
+                            });
+                    });
+                });
+            });
+        </script>
+
     @endforeach
 @endsection

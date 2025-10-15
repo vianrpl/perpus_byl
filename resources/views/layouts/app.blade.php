@@ -155,15 +155,30 @@
                             <p>Profil</p>
                         </a>
                     </li>
-
+                    @if(in_array(Auth::user()->role, ['admin', 'petugas']))
                     <div class="menu-title">Transaksi</div>
-
                     <li class="nav-item">
                         <a href="{{ route('penataan_bukus.index') }}" class="nav-link {{ Request::is('penataan*') ? 'active' : '' }}">
                             <i class="far fa-clipboard nav-icon"></i>
                             <p>Penataan Buku</p>
                         </a>
                     </li>
+                        <li class="nav-item">
+                        <a href="{{ route('peminjaman.index') }}" class="nav-link {{ Request::is('peminjaman*') ? 'active' : '' }}">
+                            <i class="far fa-clipboard nav-icon"></i>
+                            <p>Peminjaman</p>
+                        </a>
+                    </li>
+                    @endif
+
+                    @canany(['admin','petugas'])
+                        <li class="nav-item">
+                            <a href="{{ route('peminjaman.notif') }}" class="nav-link{{Request::is('peminjaman.notif*')?'active':''}}">
+                            <p>Notifikasi Peminjaman</p>
+                            </a>
+                        </li>
+                    @endcanany
+
                 </ul>
             </nav>
         </div>

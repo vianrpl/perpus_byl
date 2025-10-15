@@ -34,4 +34,9 @@ class buku_items extends Model
         // penataan_bukus model biasanya bernama PenataanBukus atau penataan_bukus
         return $this->hasMany(\App\Models\penataan_bukus::class, 'id_buku', 'id_buku');
     }
+    public function peminjaman()
+    {
+        return $this->hasMany(peminjaman::class, 'id_item');
+    }
+
 }
