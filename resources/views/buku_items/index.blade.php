@@ -71,6 +71,20 @@
                                 Hapus
                             </button>
                         @endunless
+
+                        @if($item->status === 'tersedia')
+                            <button class="btn btn-primary btn-sm"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#pinjamModal"
+                                    data-id="{{ $item->id_item }}"
+                                    data-judul="{{ $item->buku->judul ?? 'Judul tidak ditemukan' }}">
+                                Pinjam
+                            </button>
+                        @else
+                            <span class="badge bg-secondary">Tidak tersedia</span>
+                        @endif
+
+
                     </td>
                 </tr>
             @empty
@@ -242,4 +256,74 @@
             </div>
         </div>
     @endforeach
+    <!-- ============================= -->
+    <!-- Modal Pinjam (1x saja di luar loop) -->
+    <!-- ============================= -->
+    <div class="modal fade" id="pinjamModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <form method="POST" action="{{ route('peminjaman.request') }}" id="formPinjam">
+                @csrf
+                <input type="hidden" name="id_item" id="modal_id_item" />
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Permintaan Pinjam - <span id="modal_judul"></span></h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-2">
+                            <label>User</label>
+                            <input type="text" class="form-control" name="nama" value="{{ auth()->user()->name }}" readonly>
+                        </div>
+                        <div class="mb-2">
+                            <label>Alamat</label>
+                            <input type="text" class="form-control" name="alamat" required>
+                        </div>
+                        <div class="mb-2">
+                            <label>Tanggal Pengembalian (maks 7 hari)</label>
+                            <input type="date" class="form-control" id="pengembalian" name="pengembalian" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit" class="btn btn-primary">Kirim Permintaan</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ============================= -->
+    <!-- Script Modal Pinjam -->
+    <!-- ============================= -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const buttons = document.querySelectorAll('button[data-bs-target="#pinjamModal"]');
+            const idField = document.getElementById('modal_id_item');
+            const judulField = document.getElementById('modal_judul');
+            const dateInput = document.getElementById('pengembalian');
+
+            buttons.forEach(btn => {
+                btn.addEventListener('click', function () {
+                    const id = this.dataset.id;
+                    const judul = this.dataset.judul || 'Judul tidak ditemukan';
+
+                    idField.value = id;
+                    judulField.textContent = judul;
+
+                    // atur tanggal min dan max (maks 7 hari)
+                    const today = new Date();
+                    const min = today.toISOString().split('T')[0];
+
+                    const maxDate = new Date(today);
+                    maxDate.setDate(maxDate.getDate() + 7);
+                    const max = maxDate.toISOString().split('T')[0];
+
+                    dateInput.min = min;
+                    dateInput.max = max;
+                    dateInput.value = min;
+                });
+            });
+        });
+    </script>
+
 @endsection

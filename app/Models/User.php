@@ -54,4 +54,10 @@ protected $primaryKey='id_user';
     {
         return $this->hasMany(penataan_bukus::class, 'id_penataan');
     }
+
+    public function peminjaman()
+    {
+        return $this->hasMany(peminjaman::class, 'id_user');
+    }
+
 }

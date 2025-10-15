@@ -105,5 +105,35 @@ class BukuItemsController extends Controller
 
         return view('buku_items.all', compact('items'));
     }
+    public function pinjam(Request $request, $id)
+    {
+        $user = auth()->user();
+        if (!in_array($user->role, ['member','petugas','admin'])) {
+            return response()->json(['success'=>false,'message'=>'Hanya member/petugas/admin yang boleh meminjam.'],403);
+        }
+
+        $validated = $request->validate([
+            'pengembalian' => 'required|date|after:today'
+        ]);
+
+        $item = buku_items::findOrFail($id);
+        if ($item->status !== 'tersedia') {
+            return response()->json(['success'=>false,'message'=>'Item tidak tersedia untuk dipinjam.']);
+        }
+
+        // buat record peminjaman baru (status pending)
+        \App\Models\Peminjaman::create([
+            'id_user' => $user->id_user,
+            'id_item' => $item->id_item,
+            'id_buku' => $item->id_buku,
+            'pinjam' => now(),
+            'pengembalian' => $validated['pengembalian'],
+            'status' => 'pending',
+            'alamat' => $request->alamat,
+        ]);
+
+        return response()->json(['success'=>true,'message'=>'Permintaan peminjaman dikirim, menunggu persetujuan admin/petugas.']);
+    }
+
 
 }

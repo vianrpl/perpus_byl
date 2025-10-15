@@ -12,10 +12,63 @@ use App\Http\Controllers\KategorisController;
 use App\Http\Controllers\SubKategorisController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\PenataanBukusController;
+use App\Http\Controllers\PeminjamanController;
 
 Route::get('/get-rak-by-buku/{id_buku}', [App\Http\Controllers\PenataanBukusController::class, 'getRakByBuku']);
 Route::get('/raks/{id_rak}', [RaksController::class, 'show'])->name('raks.show');
 Route::get('/get-bukus-for-selection', [App\Http\Controllers\BukusController::class, 'getForSelection']);
+
+// ==========================
+// ROUTE PEMINJAMAN
+// ==========================
+Route::middleware(['auth'])->group(function () {
+    // ==========================
+    // USER (KIRIM PERMINTAAN PINJAM)
+    // ==========================
+    Route::post('/peminjaman/request', [PeminjamanController::class, 'storeRequest'])
+        ->name('peminjaman.request');
+
+    // ==========================
+    // ADMIN / PETUGAS (KELOLA REQUEST)
+    // ==========================
+    Route::get('/peminjaman/requests', [PeminjamanController::class, 'requestsIndex'])
+        ->middleware('can:isStaff')
+        ->name('peminjaman.requests');
+
+    Route::post('/peminjaman/{id}/approve', [PeminjamanController::class, 'approve'])
+        ->middleware('can:isStaff')
+        ->name('peminjaman.approve');
+
+    Route::post('/peminjaman/{id}/reject', [PeminjamanController::class, 'reject'])
+        ->middleware('can:isStaff')
+        ->name('peminjaman.reject');
+
+    Route::post('/peminjaman/{id}/extend', [PeminjamanController::class, 'extend'])
+        ->middleware('can:isStaff')
+        ->name('peminjaman.extend');
+
+    Route::put('/peminjaman/{id}/perpanjang', [PeminjamanController::class, 'perpanjang'])->name('peminjaman.perpanjang');
+
+
+    // ==========================
+    // KEMBALIKAN BUKU
+    // ==========================
+    Route::post('/peminjaman/{id}/kembalikan', [PeminjamanController::class, 'kembalikan'])
+        ->middleware('can:isStaff')
+        ->name('peminjaman.kembalikan');
+
+    // ✅ TAMBAHKAN ROUTE UPDATE INI BIAR ERRORMU HILANG
+    // ini dipakai waktu admin/petugas menyetujui request dari view yang pakai route('peminjaman.update')
+    Route::put('/peminjaman/{id}/update', [PeminjamanController::class, 'update'])
+        ->middleware('can:isStaff')
+        ->name('peminjaman.update');
+
+    // ==========================
+    // RESOURCE INDEX (LIST PEMINJAMAN)
+    // ==========================
+    Route::get('/peminjaman', [PeminjamanController::class, 'index'])
+        ->name('peminjaman.index');
+});
 
 
 // ==========================
