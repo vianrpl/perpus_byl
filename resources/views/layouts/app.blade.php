@@ -34,109 +34,33 @@
                     <a href="{{ route('dashboard') }}" class="nav-link">Home</a>
                 </li>
             @endif
-
-            {{-- === Tambahan Menu Daftar Member & Notifikasi Admin === --}}
-            @auth
-                {{-- ✅ Menu Daftar Member untuk user yang sudah verif tapi belum jadi member --}}
-                @if(auth()->user()->is_verified_member && !auth()->user()->is_member)
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ route('member.ask') }}">
-                            <i class="bi bi-person-plus"></i> Membership
-                        </a>
-                    </li>
-                @endif
-
-                {{-- ✅ Notifikasi untuk Admin/Petugas jika ada permintaan pendaftaran member --}}
-                @if(auth()->user()->role === 'admin' || auth()->user()->role === 'petugas')
-                    @php
-                        $pendingCount = \App\Models\MemberProfile::where('request_status', 'pending')->count();
-                    @endphp
-                    <li class="nav-item">
-                        <a class="nav-link position-relative" href="{{ route('admin.member.requests') }}">
-                            <i class="bi bi-envelope"></i>
-                            @if($pendingCount > 0)
-                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
-                        {{ $pendingCount }}
-                    </span>
-                            @endif
-                        </a>
-                    </li>
-                @endif
-            @endauth
-            {{-- === Akhir Tambahan === --}}
-
         </ul>
         @endif
 
         <!-- Right navbar -->
-        <ul class="navbar-nav ms-auto align-items-center">
-
-            {{-- 🔔 NOTIFIKASI PEMINJAMAN BARU --}}
-            @if(in_array(Auth::user()->role, ['admin', 'petugas']))
-                @php
-                    // ambil jumlah permintaan pending dari tabel peminjaman
-                    $notifCount = \App\Models\Peminjaman::where('request_status', 'pending')->count();
-                    $notifList = \App\Models\Peminjaman::with(['user', 'item.bukus'])
-                        ->where('request_status', 'pending')
-                        ->latest('id_peminjaman') // 🟢 ganti urut pakai id)
-                        ->take(5)
-                        ->get();
-                @endphp
-
-                <li class="nav-item dropdown me-3">
-                    <a class="nav-link position-relative" href="#" id="notifDropdown" data-bs-toggle="dropdown">
-                        <i class="fas fa-bell"></i>
-                        @if($notifCount > 0)
-                            <span class="badge bg-danger position-absolute top-0 start-100 translate-middle">
-                        {{ $notifCount }}
-                    </span>
-                        @endif
+        <ul class="navbar-nav ms-auto">
+            @if(!Request::is('dashboard'))
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="profileDropdown" role="button" data-bs-toggle="dropdown">
+                        <i class="fas fa-user-circle"></i> {{ Auth::user()->name }}
                     </a>
-
-                    <ul class="dropdown-menu dropdown-menu-end shadow">
-                        <li class="dropdown-header bg-light fw-bold text-center">
-                            Notifikasi Peminjaman
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li>
+                            <a class="dropdown-item" href="{{ route('profile.edit') }}">
+                                <i class="fas fa-user"></i> Profil
+                            </a>
                         </li>
-                        @forelse($notifList as $req)
-                            <li>
-                                <a href="{{ route('peminjaman.requests') }}" class="dropdown-item">
-                                    <i class="fas fa-book text-primary me-2"></i>
-                                    <strong>{{ $req->user->name }}</strong> minta pinjam
-                                    <em>{{ $req->bukuItem->bukus->judul ?? 'Buku' }}</em>
-                                </a>
-                            </li>
-                        @empty
-                            <li><span class="dropdown-item text-muted text-center">Tidak ada permintaan baru</span></li>
-                        @endforelse
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a href="{{ route('peminjaman.requests') }}" class="dropdown-item text-center text-primary">
-                                <i class="fas fa-eye"></i> Lihat semua
-                            </a></li>
+                        <li>
+                            <form method="POST" action="{{ route('logout') }}">
+                                @csrf
+                                <button type="submit" class="dropdown-item text-danger">
+                                    <i class="fas fa-sign-out-alt"></i> Logout
+                                </button>
+                            </form>
+                        </li>
                     </ul>
                 </li>
             @endif
-
-            {{-- 🔹 Dropdown Profil --}}
-            <li class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle" href="#" id="profileDropdown" role="button" data-bs-toggle="dropdown">
-                    <i class="fas fa-user-circle"></i> {{ Auth::user()->name }}
-                </a>
-                <ul class="dropdown-menu dropdown-menu-end">
-                    <li>
-                        <a class="dropdown-item" href="{{ route('profile.edit') }}">
-                            <i class="fas fa-user"></i> Profil
-                        </a>
-                    </li>
-                    <li>
-                        <form method="POST" action="{{ route('logout') }}">
-                            @csrf
-                            <button type="submit" class="dropdown-item text-danger">
-                                <i class="fas fa-sign-out-alt"></i> Logout
-                            </button>
-                        </form>
-                    </li>
-                </ul>
-            </li>
         </ul>
     </nav>
 
@@ -231,23 +155,15 @@
                             <p>Profil</p>
                         </a>
                     </li>
-                    @if(in_array(Auth::user()->role, ['admin', 'petugas']))
+
                     <div class="menu-title">Transaksi</div>
+
                     <li class="nav-item">
                         <a href="{{ route('penataan_bukus.index') }}" class="nav-link {{ Request::is('penataan*') ? 'active' : '' }}">
                             <i class="far fa-clipboard nav-icon"></i>
                             <p>Penataan Buku</p>
                         </a>
                     </li>
-                        <li class="nav-item">
-                        <a href="{{ route('peminjaman.index') }}" class="nav-link {{ Request::is('peminjaman*') ? 'active' : '' }}">
-                            <i class="far fa-envelope nav-icon"></i>
-                            <p>Peminjaman</p>
-                        </a>
-                    </li>
-                    @endif
-
-
                 </ul>
             </nav>
         </div>
