@@ -89,6 +89,7 @@
                     <li class="nav-item">
                         <a class="nav-link" data-bs-toggle="tab" href="#password">Password</a>
                     </li>
+
                     <li class="nav-item">
                         <a class="nav-link" data-bs-toggle="tab" href="#hapus">Hapus Akun</a>
                     </li>
@@ -124,6 +125,16 @@
                 <div class="tab-pane fade" id="hapus">
                     @include('profile.partials.delete-user-form')
                 </div>
+
+                {{-- 🔹 Tombol Verifikasi Akun --}}
+                @if(!Auth::user()->is_verified_member)
+                    <hr>
+                    <div class="text-center mt-4">
+                        <a href="{{ route('member.ask') }}" class="btn btn-warning">
+                            <i class="bi bi-envelope-check"></i> Verifikasi Akun
+                        </a>
+                    </div>
+                @endif
             </div>
         </div>
     </div>

@@ -2,7 +2,19 @@
 
 @section('content')
     <h2 class="mb-3">Daftar Item Buku: {{ $buku->judul }}</h2>
-
+    {{-- Form Search --}}
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap" style="gap:10px;">
+        {{-- 🔍 Form Search --}}
+        <form action="{{ route('bukus.items.index', $buku->id_buku) }}"  method="GET" class="d-flex" style="max-width:400px;">
+            <div class="input-group">
+                <input type="text" name="search" class="form-control" placeholder="Cari Barcode"
+                       value="{{ request('search') }}">
+                <button class="btn btn-dark" type="submit">Cari</button>
+                @if(request('search'))
+                    <a href="{{ route('bukus.items.index', $buku->id_buku) }}"  class="btn btn-dark">Reset</a>
+                @endif
+            </div>
+        </form>
     {{-- 🔹 Tentukan ID rak asal --}}
     @php
         // Jika datang dari show rak, ambil dari query string ?from_rak=...
@@ -12,16 +24,18 @@
 
 
     {{-- 🔹 Tombol navigasi --}}
-    <a href="{{ route('bukus.index') }}" class="btn btn-primary mb-3">Daftar Buku</a>
+        <div class="d-flex align-items-center" style="gap:8px;">
+    <a href="{{ route('bukus.index') }}" class="btn btn-primary mb-1">Daftar Buku</a>
 
     @if($rakId)
         {{-- 🔹 Jika ada rakId, maka tombol Rak akan kembali ke show rak asal --}}
-        <a href="{{ route('raks.show', $rakId) }}" class="btn btn-primary mb-3">Rak</a>
+        <a href="{{ route('raks.show', $rakId) }}" class="btn btn-primary mb-1">Rak</a>
     @else
         {{-- 🔹 Jika tidak ada rakId, fallback ke index semua rak --}}
-        <a href="{{ route('raks.index') }}" class="btn btn-primary mb-3">Rak</a>
+        <a href="{{ route('raks.index') }}" class="btn btn-primary mb-1">Rak</a>
     @endif
-
+    </div>
+    </div>
 
     {{-- Tabel daftar item --}}
     <div class="table table-responsive">
@@ -55,7 +69,7 @@
                         </button>
 
                         <!-- Tombol EDIT -->
-                        @unless(Auth::user()->role === 'konsumen')
+                        @unless($item->kondisi === 'hilang' || $item->status === 'hilang' || Auth::user()->role === 'konsumen')
                             <button type="button" class="btn btn-warning btn-sm"
                                     data-bs-toggle="modal"
                                     data-bs-target="#modalEditItem{{ $item->id_item }}">
@@ -76,15 +90,17 @@
                             <button class="btn btn-primary btn-sm"
                                     data-bs-toggle="modal"
                                     data-bs-target="#pinjamModal"
-                                    data-id="{{ $item->id_item }}"
-                                    data-judul="{{ $item->buku->judul ?? 'Judul tidak ditemukan' }}">
+                                    data-id="{{ $item->id_item}}"
+                                    data-judul="{{ $item->bukus->judul}}">
                                 Pinjam
                             </button>
                         @else
-                            <span class="badge bg-secondary">Tidak tersedia</span>
+                            @if($item->status === 'hilang' || $item->kondisi === 'hilang')
+                                <span class="badge bg-danger">Hilang</span>
+                            @else
+                                <span class="badge bg-secondary">Tidak tersedia</span>
+                            @endif
                         @endif
-
-
                     </td>
                 </tr>
             @empty
@@ -277,6 +293,10 @@
                         <div class="mb-2">
                             <label>Alamat</label>
                             <input type="text" class="form-control" name="alamat" required>
+                        </div>
+                        <div class="mb-2">
+                            <label>Nama Peminjam</label>
+                            <input type="text" class="form-control" name="nama_peminjam" required>
                         </div>
                         <div class="mb-2">
                             <label>Tanggal Pengembalian (maks 7 hari)</label>

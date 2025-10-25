@@ -12,14 +12,27 @@ use Illuminate\Support\Facades\DB;
 class PeminjamanController extends Controller
 {
     // 🔹 Menampilkan semua peminjaman (untuk admin/petugas)
-    public function index()
+    public function index(Request $request)
     {
-        $peminjaman = Peminjaman::with(['user', 'item.bukus'])
-            ->orderBy('id_peminjaman', 'desc')
-            ->get();
+        // ambil nilai pencarian dari input
+        $search = $request->input('search');
 
-        return view('peminjaman.index', compact('peminjaman'));
+        // query dasar
+        $peminjaman = Peminjaman::with(['user', 'item.bukus'])
+            ->orderBy('id_peminjaman', 'asc')
+            ->when($search, function ($query, $search) {
+                $query->whereHas('item', function ($q) use ($search) {
+                    $q->where('barcode', 'like', "%{$search}%");
+                })->orWhereHas('item.bukus', function ($q) use ($search) {
+                    $q->where('judul', 'like', "%{$search}%");
+                });
+            })
+            ->paginate(10)
+            ->withQueryString();
+
+        return view('peminjaman.index', compact('peminjaman', 'search'));
     }
+
 
     // 🔹 User mengirim permintaan pinjam
     public function storeRequest(Request $req)
@@ -27,6 +40,7 @@ class PeminjamanController extends Controller
         $req->validate([
             'id_item' => 'required|integer|exists:buku_items,id_item',
             'alamat' => 'required|string|max:255',
+            'nama_peminjam' => 'required|string|max:255',
             'pengembalian' => 'required|date|after:now',
         ]);
 
@@ -41,6 +55,7 @@ class PeminjamanController extends Controller
             'id_user' => Auth::id(),
             'id_item' => $item->id_item,
             'alamat' => $req->alamat,
+            'nama_peminjam' => $req->nama_peminjam,
             'pengembalian' => $req->pengembalian,
             'kondisi' => $item->kondisi,
             'status' => null,
@@ -208,26 +223,41 @@ class PeminjamanController extends Controller
     }
 
 
-    public function kembalikan($id)
+    public function kembalikan(Request $request, $id)
     {
-        DB::transaction(function() use ($id) {
+        $request->validate([
+            'kondisi' => 'required|in:baik,rusak,hilang',
+        ]);
+
+        DB::transaction(function() use ($id, $request) {
             $p = Peminjaman::lockForUpdate()->findOrFail($id);
             if (!in_array($p->status, ['dipinjam', 'diperpanjang'])) {
                 abort(400, 'Hanya buku yang sedang dipinjam bisa dikembalikan.');
             }
 
-            // ubah status jadi kembali
+            // ubah status peminjaman + simpan kondisi buku
             $p->status = 'kembali';
             $p->request_status = 'returned';
+            $p->kondisi_buku_saat_kembali = $request->kondisi; // ✅ ini penting
             $p->save();
 
-            // ubah status item buku jadi tersedia lagi
+            // ubah status item buku
             $item = buku_items::lockForUpdate()->findOrFail($p->id_item);
+            $item->kondisi = $request->kondisi;
+
+            if($request->kondisi==='hilang'){
+                //jika hilang tidak bisa pinjam dan edit
+                $item->status='hilang';
+            }else{
+                //jika baik/rusak jadi tersedia
             $item->status = 'tersedia';
+            }
             $item->save();
         });
 
-        return back()->with('success', 'Buku berhasil dikembalikan.');
+        return back()->with('success', 'Buku berhasil dikembalikan dan kondisi diperbarui.');
     }
+
+
 
 }

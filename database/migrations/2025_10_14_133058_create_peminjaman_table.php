@@ -11,17 +11,21 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('peminjamen', function (Blueprint $table) {
-            $table->id();
-            $table->timestamps();
-        });
+        // ✅ Jangan bikin tabel kalau sudah ada
+        if (!Schema::hasTable('peminjaman')) {
+            Schema::create('peminjaman', function (Blueprint $table) {
+                $table->id();
+                $table->timestamps();
+            });
+        }
     }
+
 
     /**
      * Reverse the migrations.
      */
     public function down(): void
     {
-        Schema::dropIfExists('peminjamen');
+        Schema::dropIfExists('peminjaman');
     }
 };

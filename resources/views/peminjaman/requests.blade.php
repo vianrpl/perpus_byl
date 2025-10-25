@@ -7,11 +7,12 @@
         <table class="table table-bordered table-striped">
             <thead class="table-dark">
             <tr class="text-center">
-                <th>Nama Peminjam</th>
+                <th>User</th>
                 <th>Buku</th>
                 <th>Eksemplar</th>
                 <th>Tanggal Pengembalian</th>
                 <th>Alamat</th>
+                <th>Nama Peminjam</th>
                 <th>Aksi</th>
             </tr>
             </thead>
@@ -23,6 +24,7 @@
                     <td>{{ $req->item->barcode ?? '-' }}</td> {{-- ✅ Barcode dari buku_items --}}
                     <td>{{ $req->pengembalian }}</td>
                     <td>{{ $req->alamat }}</td>
+                    <td>{{ $req->nama_peminjam }}</td>
                     <td>
                         <form action="{{ route('peminjaman.approve', $req->id_peminjaman) }}" method="POST" style="display:inline;">
                             @csrf
@@ -35,7 +37,7 @@
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="6" class="text-center">Belum ada permintaan peminjaman.</td></tr>
+                <tr><td colspan="7" class="text-center">Belum ada permintaan peminjaman.</td></tr>
             @endforelse
             </tbody>
         </table>

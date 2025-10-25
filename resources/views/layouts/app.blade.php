@@ -34,6 +34,37 @@
                     <a href="{{ route('dashboard') }}" class="nav-link">Home</a>
                 </li>
             @endif
+
+            {{-- === Tambahan Menu Daftar Member & Notifikasi Admin === --}}
+            @auth
+                {{-- ✅ Menu Daftar Member untuk user yang sudah verif tapi belum jadi member --}}
+                @if(auth()->user()->is_verified_member && !auth()->user()->is_member)
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ route('member.ask') }}">
+                            <i class="bi bi-person-plus"></i> Membership
+                        </a>
+                    </li>
+                @endif
+
+                {{-- ✅ Notifikasi untuk Admin/Petugas jika ada permintaan pendaftaran member --}}
+                @if(auth()->user()->role === 'admin' || auth()->user()->role === 'petugas')
+                    @php
+                        $pendingCount = \App\Models\MemberProfile::where('request_status', 'pending')->count();
+                    @endphp
+                    <li class="nav-item">
+                        <a class="nav-link position-relative" href="{{ route('admin.member.requests') }}">
+                            <i class="bi bi-envelope"></i>
+                            @if($pendingCount > 0)
+                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                        {{ $pendingCount }}
+                    </span>
+                            @endif
+                        </a>
+                    </li>
+                @endif
+            @endauth
+            {{-- === Akhir Tambahan === --}}
+
         </ul>
         @endif
 

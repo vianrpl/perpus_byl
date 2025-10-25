@@ -13,10 +13,28 @@ use App\Http\Controllers\SubKategorisController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\PenataanBukusController;
 use App\Http\Controllers\PeminjamanController;
+use App\Http\Controllers\MemberController;
+use App\Http\Controllers\AdminMemberController;
 
 Route::get('/get-rak-by-buku/{id_buku}', [App\Http\Controllers\PenataanBukusController::class, 'getRakByBuku']);
 Route::get('/raks/{id_rak}', [RaksController::class, 'show'])->name('raks.show');
 Route::get('/get-bukus-for-selection', [App\Http\Controllers\BukusController::class, 'getForSelection']);
+
+//Route member
+Route::middleware(['auth'])->group(function () {
+    Route::get('/member/ask', [MemberController::class, 'showAskPage'])->name('member.ask');
+    Route::post('/member/send-code', [MemberController::class, 'sendVerificationCode'])->name('member.send_code');
+    Route::post('/member/verify-code', [MemberController::class, 'verifyCode'])->name('member.verify_code');
+
+    Route::post('/member/register', [MemberController::class, 'submitRegistration'])->name('member.register');
+
+    Route::middleware(['role:admin,petugas'])->group(function () {
+        Route::get('/admin/member/requests', [AdminMemberController::class, 'index'])->name('admin.member.requests');
+        Route::post('/admin/member/requests/{id}/approve', [AdminMemberController::class, 'approve'])->name('admin.member.approve');
+        Route::post('/admin/member/requests/{id}/reject', [AdminMemberController::class, 'reject'])->name('admin.member.reject');
+        Route::post('/admin/member/send-code/{id}', [AdminMemberController::class, 'sendCodeToUser'])->name('admin.member.send_code_to_user');
+    });
+});
 
 // ==========================
 // ROUTE PEMINJAMAN
