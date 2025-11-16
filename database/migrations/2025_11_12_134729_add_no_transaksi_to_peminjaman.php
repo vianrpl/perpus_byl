@@ -9,11 +9,10 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-    public function up(): void
+    public function up()
     {
-        Schema::create('peminjamen', function (Blueprint $table) {
-            $table->id();
-            $table->timestamps();
+        Schema::table('peminjaman', function (Blueprint $table) {
+            $table->string('no_transaksi')->nullable()->after('id_peminjaman');
         });
     }
 
@@ -22,6 +21,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('peminjamen');
+        Schema::table('peminjaman', function (Blueprint $table) {
+            $table->dropColumn('no_transaksi'); // Hapus jika rollback
+        });
     }
 };

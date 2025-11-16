@@ -13,20 +13,27 @@ class UserController extends Controller
     public function index(Request $request)
     {
         $search = $request->input('search');
+        $filterRole = $request->input('filter_role');
+        $filterStatus = $request->input('filter_status');
 
         $users = User::when($search, function ($query, $search) {
             $query->where('name', 'like', "%{$search}%")
                 ->orWhere('email', 'like', "%{$search}%")
                 ->orWhere('role', 'like', "%{$search}%");
         })
-
+            ->when($filterRole, function ($query, $filterRole) {
+                $query->where('role', $filterRole);
+            })
+            ->when($filterStatus, function ($query, $filterStatus) {
+                $query->where('status', $filterStatus);
+            })
             ->orderBy('id_user', 'asc')
             ->paginate(10)
             ->withQueryString();
 
         return view('users.index', compact('users'));
-
     }
+
 
     /**
      * Show the form for creating a new resource.
@@ -87,5 +94,18 @@ class UserController extends Controller
     return redirect()->route('users.index')
         ->with('success','Akun berhasil dihapus');
 }
+
+    public function bulkDestroy(Request $request)
+    {
+        $ids = $request->input('ids');
+        if (!$ids || count($ids) === 0) {
+            return back()->with('error', 'Tidak ada data yang dipilih untuk dihapus.');
+        }
+
+        \App\Models\User::whereIn('id_user', $ids)->delete();
+
+        return back()->with('success', 'Beberapa user berhasil dihapus.');
+    }
+
 
 }

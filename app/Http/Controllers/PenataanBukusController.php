@@ -26,27 +26,55 @@ class PenataanBukusController extends Controller
         // Buat query dengan relasi bukus, raks, dan user
         $query = penataan_bukus::with(['bukus', 'raks', 'user']);
 
-        // Terapkan filter pencarian jika ada
+        // Terapkan filter pencarian jika ada (nama buku, nama rak atau nama petugas)
         if ($search) {
-            $query->whereHas('bukus', function ($q) use ($search) {
-                $q->where('judul', 'like', '%' . $search . '%');  // Sesuaikan field buku
-            })->orWhereHas('raks', function ($q) use ($search) {
-                $q->where('nama', 'like', '%' . $search . '%');
-            })->orWhereHas('user', function ($q) use ($search) {
-                $q->where('name', 'like', '%' . $search . '%');
+            $query->where(function ($q) use ($search) {
+                $q->whereHas('bukus', function ($qb) use ($search) {
+                    $qb->where('judul', 'like', '%' . $search . '%');
+                })
+                    ->orWhereHas('raks', function ($qr) use ($search) {
+                        $qr->where('nama', 'like', '%' . $search . '%');
+                    })
+                    ->orWhereHas('user', function ($qu) use ($search) {
+                        $qu->where('name', 'like', '%' . $search . '%');
+                    });
             });
         }
 
-        // Ambil data dengan pagination (10 per halaman)
-        $penataanBukus = $query->paginate(10);
+        // ✅ Filter berdasarkan petugas (id_user)
+        if ($request->filled('filter_petugas')) {
+            $query->where('id_user', $request->filter_petugas);
+        }
 
-        // Ambil data buku dan rak untuk dropdown di modal
+        // ✅ Filter berdasarkan status penataan (penuh / belum)
+        // 'penuh'  => bukus.jumlah_tata >= bukus.jumlah
+        // 'belum'  => bukus.jumlah_tata < bukus.jumlah
+        if ($request->filled('filter_status')) {
+            $status = $request->filter_status;
+            if ($status === 'penuh') {
+                // whereHas on relation bukus, cek kondisi jumlah_tata >= jumlah
+                $query->whereHas('bukus', function($qb) {
+                    $qb->whereColumn('jumlah_tata', '>=', 'jumlah');
+                });
+            } elseif ($status === 'belum') {
+                $query->whereHas('bukus', function($qb) {
+                    $qb->whereColumn('jumlah_tata', '<', 'jumlah');
+                });
+            }
+        }
+
+        // Ambil data dengan pagination (10 per halaman) dan simpan query params agar page mempertahankan filter
+        $penataanBukus = $query->paginate(10)->appends($request->except('page'));
+
+        // Ambil data buku dan rak untuk dropdown di modal (tidak diubah)
         $bukus = bukus::all();
         $raks = raks::all();
 
         // Kembalikan view index dengan data
         return view('penataan_bukus.index', compact('penataanBukus', 'bukus', 'raks'));
     }
+
+
 
     /**
      * Show the form for creating a new resource.
@@ -68,102 +96,73 @@ class PenataanBukusController extends Controller
      */
     public function store(Request $request)
     {
-        // Validasi input dasar (sudah ada, ok)
-        $validator = Validator::make($request->all(), [
+        $request->validate([
             'id_buku' => 'required|exists:bukus,id_buku',
             'id_rak' => 'required|exists:raks,id_rak',
-            'kolom' => 'required|integer|min:1',
-            'baris' => 'required|integer|min:1',
+            'kolom' => 'required|integer',
+            'baris' => 'required|integer',
             'jumlah' => 'required|integer|min:1',
-            'sumber' => 'nullable|string|max:255',
+            'sumber' => 'required|string',
         ]);
 
-        if ($validator->fails()) {
-            return redirect()->back()->withErrors($validator)->withInput();
-        }
+        $id_buku = $request->id_buku;
+        $tambahJumlah = (int) $request->jumlah;
 
-        $buku = bukus::findOrFail($request->id_buku);
-        $rak = raks::findOrFail($request->id_rak);
-
-        // 1) Pastikan kategori sama (sudah ada, ok)
-        if ($buku->id_kategori != $rak->id_kategori) {
-            return redirect()->back()
-                ->withErrors(['id_rak' => 'Rak tidak sesuai kategori buku. Pilih rak yang kategorinya sama.'])
-                ->withInput();
-        }
-
-        // BARU: Validasi stok buku total (sum semua penataan + new)
-        $existingSumBuku = $buku->penataan_bukus()->sum('jumlah');  // Sum existing penataan untuk buku ini
-        $totalRequestedBuku = $existingSumBuku + $request->jumlah;
-        if ($totalRequestedBuku > $buku->jumlah) {
-            return redirect()->back()
-                ->withErrors(['jumlah' => "Jumlah melebihi total eksemplar buku! Sisa: " . ($buku->jumlah - $existingSumBuku) . "."])
-                ->withInput();
-        }
-
-        // BARU: Validasi kapasitas rak (sum semua penataan di rak + new)
-        $existingSumRak = $rak->penataan_bukus()->sum('jumlah');
-        $totalRequestedRak = $existingSumRak + $request->jumlah;
-        if ($totalRequestedRak > $rak->kapasitas) {
-            return redirect()->back()
-                ->withErrors(['jumlah' => "Jumlah melebihi kapasitas rak! Sisa: " . ($rak->kapasitas - $existingSumRak) . "."])
-                ->withInput();
-        }
-
-        // Lanjut transaction (kode lama ok, tapi tambah komentar)
-        DB::transaction(function() use ($request, $buku, $rak) {
-            // Cek existing penataan di posisi persis sama (rak, kolom, baris, buku)
-            $existingPenataan = penataan_bukus::where('id_buku', $request->id_buku)
-                ->where('id_rak', $request->id_rak)
-                ->where('kolom', $request->kolom)
-                ->where('baris', $request->baris)
-                ->first();
-
-            if ($existingPenataan) {
-                // Merge: Tambah jumlah ke existing
-                $existingPenataan->jumlah += $request->jumlah;
-                $existingPenataan->id_user = Auth::id();
-                $existingPenataan->modified_date = now();
-                $existingPenataan->save();
-
-                $desiredTotal = $existingPenataan->jumlah;
-            } else {
-                // Buat baru
-                $penataan = new penataan_bukus();
-                $penataan->id_buku = $request->id_buku;
-                $penataan->id_rak = $request->id_rak;
-                $penataan->kolom = $request->kolom;
-                $penataan->baris = $request->baris;
-                $penataan->jumlah = $request->jumlah;
-                $penataan->sumber = $request->sumber;
-                $penataan->id_user = Auth::id();
-                $penataan->insert_date = now();
-                $penataan->modified_date = now();
-                $penataan->save();
-
-                $desiredTotal = $penataan->jumlah;
+        DB::beginTransaction();
+        try {
+            $buku = \App\Models\bukus::lockForUpdate()->find($id_buku);
+            if (!$buku) {
+                return $request->ajax()
+                    ? response()->json(['success'=>false, 'message'=>'Buku tidak ditemukan'], 404)
+                    : redirect()->back()->with('error','Buku tidak ditemukan.');
             }
 
-            // Hitung existing items di rak ini untuk buku ini
-            $existingItemsCount = buku_items::where('id_buku', $request->id_buku)
-                ->where('id_rak', $request->id_rak)
-                ->count();
-
-            // Delta: Buat item baru sebanyak kekurangan (sudah aman karena validasi atas)
-            $toCreate = max(0, $desiredTotal - $existingItemsCount);
-
-            for ($i = 0; $i < $toCreate; $i++) {
-                buku_items::create([
-                    'id_buku' => $request->id_buku,
-                    'id_rak' => $request->id_rak,
-                    'kondisi' => 'baik',
-                    'status' => 'tersedia',
-                    'sumber' => $request->sumber,
-                ]);
+            if (($buku->jumlah_tata + $tambahJumlah) > $buku->jumlah) {
+                return $request->ajax()
+                    ? response()->json(['success'=>false, 'message'=>'Jumlah melebihi kapasitas'], 422)
+                    : redirect()->back()->with('error','Jumlah penataan melebihi kapasitas maksimal buku.');
             }
-        });
 
-        return redirect()->route('penataan_bukus.index')->with('success', 'Penataan berhasil disimpan dan eksemplar dibuat.');
+            // simpan penataan
+            $pen = new \App\Models\penataan_bukus();
+            $pen->id_buku = $id_buku;
+            $pen->id_rak = $request->id_rak;
+            $pen->kolom = $request->kolom;
+            $pen->baris = $request->baris;
+            $pen->jumlah = $tambahJumlah;
+            $pen->id_user = auth()->id();
+            $pen->sumber = $request->sumber;
+            $pen->save();
+
+            // buat eksemplar otomatis sesuai jumlah (barcode di-handle oleh trigger SQL)
+            for ($i=0; $i<$tambahJumlah; $i++) {
+                $it = new \App\Models\buku_items();
+                $it->id_buku = $id_buku;
+                $it->id_rak  = $request->id_rak;
+                $it->sumber  = $request->sumber;
+                $it->status  = 'tersedia';
+                $it->kondisi = 'baik';
+                $it->barcode = ''; // biarkan trigger DB generate
+                $it->save();
+            }
+
+            // update jumlah_tata
+            $buku->jumlah_tata = $buku->jumlah_tata + $tambahJumlah;
+            $buku->save();
+
+            DB::commit();
+
+            if ($request->ajax()) {
+                return response()->json(['success'=>true, 'added'=>$tambahJumlah], 200);
+            }
+            return redirect()->route('penataan_bukus.index')->with('success','Penataan berhasil.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            if ($request->ajax()) {
+                return response()->json(['success'=>false,'message'=>$e->getMessage()],500);
+            }
+            return redirect()->back()->with('error','Terjadi kesalahan: '.$e->getMessage());
+        }
     }
 
 
@@ -323,6 +322,39 @@ class PenataanBukusController extends Controller
             ->where('id_rak', $request->id_rak)
             ->update(['sumber' => $request->sumber]);
 
+        $realJumlah = buku_items::where('id_buku', $request->id_buku)->count();
+        $realJumlahTata = penataan_bukus::where('id_buku', $request->id_buku)->sum('jumlah');
+
+        if ($realJumlahTata > $realJumlah) {
+            $realJumlahTata = $realJumlah;
+        }
+
+        bukus::where('id_buku', $request->id_buku)->update([
+            'jumlah_tata' => $realJumlahTata,
+        ]);
+
+// === Sinkronisasi jumlah & jumlah_tata setelah edit penataan ===
+        $realJumlah = \App\Models\buku_items::where('id_buku', $request->id_buku)->count();
+        $realJumlahTata = \App\Models\penataan_bukus::where('id_buku', $request->id_buku)->sum('jumlah');
+
+        if ($realJumlahTata > $realJumlah) {
+            $realJumlahTata = $realJumlah;
+        }
+
+        \App\Models\bukus::where('id_buku', $request->id_buku)->update([
+            'jumlah_tata' => $realJumlahTata,
+        ]);
+// === Akhir tambahan ===
+
+// === Sinkronisasi jumlah real penataan sesuai jumlah item sebenarnya ===
+        $realCountItems = \App\Models\buku_items::where('id_buku', $request->id_buku)
+            ->where('id_rak', $request->id_rak)
+            ->count();
+
+        $penataan->jumlah = $realCountItems;
+        $penataan->save();
+// === Akhir tambahan sinkronisasi ===
+
         return redirect()->route('penataan_bukus.index')->with('success', 'Penataan diperbarui. Eksemplar adjusted.');
     }
 
@@ -342,8 +374,22 @@ class PenataanBukusController extends Controller
 
         $penataan->delete();
 
+        // === Sinkronisasi setelah hapus penataan ===
+        $realJumlah = \App\Models\buku_items::where('id_buku', $penataan->id_buku)->count();
+        $realJumlahTata = \App\Models\penataan_bukus::where('id_buku', $penataan->id_buku)->sum('jumlah');
+
+        if ($realJumlahTata > $realJumlah) {
+            $realJumlahTata = $realJumlah;
+        }
+
+        // 🟢 Update jumlah_tata di tabel bukus agar sinkron
+        \App\Models\bukus::where('id_buku', $penataan->id_buku)->update([
+            'jumlah_tata' => $realJumlahTata,
+        ]);
+
         return redirect()->route('penataan_bukus.index')->with('success', 'Penataan dihapus. Eksemplar terkait dihapus.');
     }
+
 
     public function getRakByBuku($id_buku)
     {

@@ -24,6 +24,7 @@ protected $primaryKey='id_user';
         'email',
         'password',
         'role',
+        'status',
         'photo',
     ];
 

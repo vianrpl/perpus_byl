@@ -16,10 +16,7 @@ class BukusController extends Controller
      */
     public function index(Request $request)
     {
-        $q = bukus::with(['penerbits', 'kategoris', 'sub_kategoris'])
-        ->withCount(['penataan_bukus as jumlah_tata' => function ($query) {
-        $query->select(\DB::raw('COALESCE(SUM(jumlah), 0)'));
-    }]);
+        $q = bukus::with(['penerbits', 'kategoris', 'sub_kategoris']);
 
         if ($s = $request->get('search')) {
             $q->where(function($x) use ($s) {
@@ -128,6 +125,20 @@ class BukusController extends Controller
         ]);
 
         $buku->update($data);
+
+        // === Sinkronisasi jumlah_tata setelah ubah jumlah buku ===
+        $realJumlah = \App\Models\bukus::where('id_buku', $id_item)->value('jumlah');
+        $realJumlahTata = \App\Models\penataan_bukus::where('id_buku', $id_item)->sum('jumlah');
+
+        if ($realJumlahTata > $realJumlah) {
+            $realJumlahTata = $realJumlah;
+        }
+
+        \App\Models\bukus::where('id_buku', $id_item)->update([
+            'jumlah_tata' => $realJumlahTata,
+        ]);
+// === Akhir tambahan ===
+
 
         return redirect()->route('bukus.index')->with('success', 'Buku berhasil diperbarui.');
     }

@@ -12,7 +12,7 @@ class bukus extends Model
     protected $keyType = 'int';
     public $timestamps = false;
 
-    protected $fillable = ['judul', 'id_penerbit','pengarang','tahun_terbit','id_kategori','isbn', 'id_sub', 'barcode','jumlah'];
+    protected $fillable = ['judul', 'id_penerbit','pengarang','tahun_terbit','id_kategori','isbn', 'id_sub', 'barcode','jumlah','jumlah_tata'];
 
     public function items()
     {

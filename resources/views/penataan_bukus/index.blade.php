@@ -28,6 +28,11 @@
             @if(request('search'))
                 <a href="{{ route('penataan_bukus.index') }}" class="btn btn-dark">Reset</a>
             @endif
+            {{-- 🧮 Tombol Filter --}}
+            <button type="button" class="btn btn-outline-secondary d-flex align-items-center"
+                    data-bs-toggle="modal" data-bs-target="#filterModal">
+                <i class="bi bi-funnel me-2"></i> Filter
+            </button>
         </div>
     </form>
 
@@ -59,9 +64,8 @@
                 <th>Nama Rak</th>
                 <th>Kolom</th>
                 <th>Baris</th>
-                <th>Jumlah</th>
+                <th>Jumlah (Max/Tata)</th>
                 <th>Petugas</th>
-                <th>Sisa</th>  <!-- Tambah kolom baru sebelum Aksi -->
                 <th>Sumber</th>
                 <th>Aksi</th>
             </tr>
@@ -78,9 +82,15 @@
                     <td>{{ $penataan->raks->nama ?? 'Rak tidak ditemukan' }}</td>
                     <td>{{ $penataan->kolom }}</td>
                     <td>{{ $penataan->baris }}</td>
-                    <td>{{ $penataan->jumlah }}</td>
+                    <td>
+                        @if($penataan->bukus)
+                            {{ $penataan->bukus->jumlah }}/{{ $penataan->bukus->jumlah_tata }}
+                        @else
+                            0/0
+                        @endif
+                    </td>
                     <td>{{ $penataan->user->name }}</td>  <!-- Langsung dari field name (string) -->
-                    <td>{{ $penataan->bukus->available ?? 0 }}</td>  <!-- Pakai accessor dari model bukus -->
+                    <!-- Pakai accessor dari model bukus -->
                     <td>{{ $penataan->sumber }}</td>
                     <td>
                         <!-- Tombol lihat -->
@@ -391,6 +401,55 @@
         </div>
     </div>
     <!-- End Modal Pilih Buku -->
+
+    <!-- 🧮 Modal Filter -->
+    <div class="modal fade" id="filterModal" tabindex="-1" aria-labelledby="filterModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-secondary text-white">
+                    <h5 class="modal-title" id="filterModalLabel">Filter Data Penataan</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <form action="{{ route('penataan_bukus.index') }}" method="GET">
+                    <div class="modal-body">
+                        {{-- Petugas --}}
+                        <!-- ===== GANTI BLOK PETUGAS DENGAN YANG INI ===== -->
+                        <div class="mb-3">
+                            <label for="filter_petugas" class="form-label">Petugas</label>
+                            <!-- Perbaikan: ambil user yang berrole admin atau petugas -->
+                            <select name="filter_petugas" id="filter_petugas" class="form-select">
+                                <option value="">-- Semua Petugas --</option>
+                                @foreach(\App\Models\User::whereIn('role', ['admin','petugas'])->get() as $user)
+                                    <option value="{{ $user->id }}" {{ request('filter_petugas') == $user->id ? 'selected' : '' }}>
+                                        {{ $user->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+
+                        <!-- ===== TAMBAHKAN BLOK STATUS ===== -->
+                        <div class="mb-3">
+                            <label for="filter_status" class="form-label">Status Penataan</label>
+                            <select name="filter_status" id="filter_status" class="form-select">
+                                <option value="">-- Semua Status --</option>
+                                <!-- penuh = jumlah_tata >= jumlah (sudah tertata penuh) -->
+                                <option value="penuh" {{ request('filter_status') == 'penuh' ? 'selected' : '' }}>Sudah Penuh (tertata)</option>
+                                <!-- belum = jumlah_tata < jumlah (belum tertata penuh) -->
+                                <option value="belum" {{ request('filter_status') == 'belum' ? 'selected' : '' }}>Belum Penuh (belum tertata)</option>
+                            </select>
+                        </div>
+
+                    </div>
+                    <div class="modal-footer">
+                        <a href="{{ route('penataan_bukus.index') }}" class="btn btn-secondary">Reset</a>
+                        <button type="submit" class="btn btn-primary">Terapkan</button>
+                    </div>
+
+                </form>
+            </div>
+        </div>
+    </div>
 
     <!-- Script JS (modifikasi existing + baru untuk modal pilih buku) -->
     <script>

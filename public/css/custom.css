@@ -69,6 +69,12 @@
     border-radius: 6px;
 }
 
+.navbar .badge {
+    font-size: 0.7rem;
+    padding: 4px 8px;
+    border-radius: 8px;
+}
+
 /* Dropdown item tetap putih */
 .dropdown-menu.bg-dark .dropdown-item {
     color: #fff !important;
@@ -151,3 +157,6 @@ html, body {
     padding-bottom: 0 !important;
 }
 
+.btn-outline-secondary i {
+    font-size: 1.1rem;
+}

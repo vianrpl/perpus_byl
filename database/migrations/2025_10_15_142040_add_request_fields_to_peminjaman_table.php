@@ -8,30 +8,58 @@ use Illuminate\Support\Facades\DB;
 return new class extends Migration {
     public function up(): void
     {
-        Schema::table('peminjaman', function (Blueprint $table) {
-            // tambahkan kolom pengatur status request
-            // kita akan menambahkan enum 'pending','approved','rejected'
-            // MySQL enum update via raw statement supaya kompatibel
-            DB::statement("ALTER TABLE peminjaman MODIFY `status` ENUM('dipinjam','tersedia','diperpanjang','pending') NOT NULL");
-            $table->enum('request_status',['pending','approved','rejected'])->default('pending')->after('status');
-            $table->unsignedBigInteger('approved_by')->nullable()->after('request_status');
-            $table->timestamp('approved_at')->nullable()->after('approved_by');
-            $table->text('request_note')->nullable()->after('alamat');
-        });
+        // 1️⃣ Pastikan kolom status sama seperti di database aslimu (SQLyog)
+        DB::statement("
+            ALTER TABLE peminjaman
+            MODIFY COLUMN status ENUM('dipinjam','diperpanjang','kembali')
+            NULL DEFAULT NULL
+        ");
 
-        // optional: foreign key untuk approved_by jika users.id_user ada
+        // 2️⃣ Tambahkan kolom request_status, approved_by, approved_at, nama_peminjam
         Schema::table('peminjaman', function (Blueprint $table) {
-            $table->foreign('approved_by')->references('id_user')->on('users')->onDelete('set null');
+            // Tambah request_status jika belum ada
+            if (!Schema::hasColumn('peminjaman', 'request_status')) {
+                $table->enum('request_status', ['pending', 'approved', 'rejected', 'returned'])
+                    ->default('pending')
+                    ->after('alamat');
+            }
+
+            // Hapus approved_by lama (kalau ada) biar aman
+            if (Schema::hasColumn('peminjaman', 'approved_by')) {
+                $table->dropColumn('approved_by');
+            }
+
+            // Tambah approved_by baru dengan tipe UNSIGNED BIGINT
+            $table->unsignedBigInteger('approved_by')->nullable()->after('request_status');
+
+            // Tambah approved_at & nama_peminjam jika belum ada
+            if (!Schema::hasColumn('peminjaman', 'approved_at')) {
+                $table->dateTime('approved_at')->nullable()->after('approved_by');
+            }
+            if (!Schema::hasColumn('peminjaman', 'nama_peminjam')) {
+                $table->string('nama_peminjam')->default('')->after('approved_at');
+            }
+
+            // 3️⃣ Tambahkan foreign key dengan tipe sama persis
+            $table->foreign('approved_by')
+                ->references('id_user')
+                ->on('users')
+                ->onDelete('set null');
         });
     }
 
     public function down(): void
     {
         Schema::table('peminjaman', function (Blueprint $table) {
-            $table->dropForeign(['approved_by']);
-            $table->dropColumn(['request_status','approved_by','approved_at','request_note']);
-            // revert enum back (kembalikan ke semula tanpa 'pending')
-            DB::statement("ALTER TABLE peminjaman MODIFY `status` ENUM('dipinjam','tersedia','diperpanjang') NOT NULL");
+            if (Schema::hasColumn('peminjaman', 'approved_by')) {
+                $table->dropForeign(['approved_by']);
+                $table->dropColumn('approved_by');
+            }
+            foreach (['request_status', 'approved_at', 'nama_peminjam'] as $col) {
+                if (Schema::hasColumn('peminjaman', $col)) {
+                    $table->dropColumn($col);
+                }
+            }
         });
     }
 };

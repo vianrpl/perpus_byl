@@ -14,6 +14,210 @@
 
     <!-- Custom CSS (optional) -->
     <link rel="stylesheet" href="{{ asset('css/custom.css') }}">
+    <style>
+        /* ===========================================
+           MODAL PINJAM BUKU - MODERN & ATTRACTIVE
+        =========================================== */
+
+        /* Modal Custom */
+        .modal-pinjam .modal-content {
+            border: none;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+            overflow: hidden;
+        }
+
+        .modal-pinjam .modal-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            padding: 1.5rem;
+        }
+
+        .modal-pinjam .modal-title {
+            font-weight: 700;
+            color: white;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .modal-pinjam .btn-close {
+            filter: invert(1);
+        }
+
+        /* Search Box Modern */
+        .search-modern {
+            border-radius: 50px;
+            border: 2px solid #e9ecef;
+            padding: 0.75rem 1.5rem;
+            transition: all 0.3s ease;
+            background: #fff;
+        }
+
+        .search-modern:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+            transform: translateY(-2px);
+        }
+
+        /* Table Modern */
+        .table-modern {
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .table-modern thead th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            letter-spacing: 0.5px;
+        }
+
+        .table-modern tbody tr {
+            transition: all 0.3s ease;
+            border-bottom: 1px solid #f8f9fa;
+        }
+
+        .table-modern tbody tr:hover {
+            background: linear-gradient(135deg, #f8f9ff 0%, #f0f2ff 100%);
+            transform: scale(1.01);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        }
+
+        /* Button Eksemplar - Glow Effect */
+        .btn-eksemplar {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
+            border: none;
+            border-radius: 25px;
+            padding: 0.5rem 1.5rem;
+            font-weight: 600;
+            color: white;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(255,107,107,0.3);
+        }
+
+        .btn-eksemplar:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(255,107,107,0.4);
+            background: linear-gradient(135deg, #ee5a52 0%, #ff6b6b 100%);
+        }
+
+        /* Selected Items Card */
+        .selected-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+            box-shadow: 0 10px 30px rgba(102,126,234,0.3);
+        }
+
+        .selected-item {
+            background: rgba(255,255,255,0.2);
+            border-radius: 10px;
+            padding: 1rem;
+            margin: 0.5rem 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            backdrop-filter: blur(10px);
+        }
+
+        .remove-btn {
+            background: rgba(255,107,107,0.8);
+            border: none;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            color: white;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .remove-btn:hover {
+            background: #ff6b6b;
+            transform: scale(1.1);
+        }
+
+        /* Eksemplar Modal */
+        .eksemplar-list .list-group-item {
+            border: none;
+            border-radius: 10px;
+            margin: 0.25rem 0;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            transition: all 0.3s ease;
+            border-left: 4px solid #667eea;
+        }
+
+        .eksemplar-list .list-group-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        /* Detail Form Modern */
+        .form-modern .form-control {
+            border-radius: 15px;
+            border: 2px solid #e9ecef;
+            padding: 0.75rem 1.25rem;
+            transition: all 0.3s ease;
+            background: #f8f9fa;
+        }
+
+        .form-modern .form-control:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102,126,234,0.25);
+            background: white;
+            transform: translateY(-2px);
+        }
+
+        .btn-lanjut {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            border: none;
+            border-radius: 25px;
+            padding: 0.75rem 2rem;
+            font-weight: 700;
+            color: white;
+            box-shadow: 0 4px 15px rgba(17,153,142,0.3);
+            transition: all 0.3s ease;
+        }
+
+        .btn-lanjut:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-lanjut:not(:disabled):hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(17,153,142,0.4);
+        }
+
+        /* Animasi Fade In */
+        .fade-in-up {
+            animation: fadeInUp 0.6s ease-out;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Icons */
+        .icon-buku { color: #ffd93d; }
+        .icon-eksemplar { color: #ff6b6b; }
+        .icon-check { color: #38ef7d; }
+    </style>
 </head>
 <body class="hold-transition
     @if(Request::is('dashboard')) layout-top-nav @else sidebar-mini layout-fixed @endif">
@@ -34,61 +238,61 @@
                     <a href="{{ route('dashboard') }}" class="nav-link">Home</a>
                 </li>
             @endif
+
+            {{-- === Tambahan Menu Daftar Member & Notifikasi Admin === --}}
+            @auth
+                {{-- ✅ Menu Daftar Member untuk user yang sudah verif tapi belum jadi member --}}
+                @if(auth()->user()->is_verified_member && !auth()->user()->is_member)
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ route('member.ask') }}">
+                            <i class="bi bi-person-plus"></i> Daftar Member
+                        </a>
+                    </li>
+                @endif
+
+                {{-- ✅ Notifikasi untuk Admin/Petugas jika ada permintaan pendaftaran member --}}
+                @if(auth()->user()->role === 'admin' || auth()->user()->role === 'petugas')
+                    @php
+                        $pendingCount = \App\Models\MemberProfile::where('request_status', 'pending')->count();
+                    @endphp
+                    <li class="nav-item">
+                        <a class="nav-link position-relative" href="{{ route('admin.member.requests') }}">
+                            <i class="bi bi-envelope"></i>
+                            @if($pendingCount > 0)
+                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                    {{ $pendingCount }}
+                </span>
+                            @endif
+                        </a>
+                    </li>
+                @endif
+            @endauth
+            {{-- === Akhir Tambahan === --}}
+
         </ul>
         @endif
 
         <!-- Right navbar -->
         <ul class="navbar-nav ms-auto align-items-center">
 
-            {{-- 🔔 NOTIFIKASI PEMINJAMAN BARU --}}
-            @if(in_array(Auth::user()->role, ['admin', 'petugas']))
-                @php
-                    // ambil jumlah permintaan pending dari tabel peminjaman
-                    $notifCount = \App\Models\Peminjaman::where('request_status', 'pending')->count();
-                    $notifList = \App\Models\Peminjaman::with(['user', 'item.bukus'])
-                        ->where('request_status', 'pending')
-                        ->latest('id_peminjaman') // 🟢 ganti urut pakai id)
-                        ->take(5)
-                        ->get();
-                @endphp
-
-                <li class="nav-item dropdown me-3">
-                    <a class="nav-link position-relative" href="#" id="notifDropdown" data-bs-toggle="dropdown">
-                        <i class="fas fa-bell"></i>
-                        @if($notifCount > 0)
-                            <span class="badge bg-danger position-absolute top-0 start-100 translate-middle">
-                        {{ $notifCount }}
-                    </span>
-                        @endif
-                    </a>
-
-                    <ul class="dropdown-menu dropdown-menu-end shadow">
-                        <li class="dropdown-header bg-light fw-bold text-center">
-                            Notifikasi Peminjaman
-                        </li>
-                        @forelse($notifList as $req)
-                            <li>
-                                <a href="{{ route('peminjaman.requests') }}" class="dropdown-item">
-                                    <i class="fas fa-book text-primary me-2"></i>
-                                    <strong>{{ $req->user->name }}</strong> minta pinjam
-                                    <em>{{ $req->bukuItem->bukus->judul ?? 'Buku' }}</em>
-                                </a>
-                            </li>
-                        @empty
-                            <li><span class="dropdown-item text-muted text-center">Tidak ada permintaan baru</span></li>
-                        @endforelse
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a href="{{ route('peminjaman.requests') }}" class="dropdown-item text-center text-primary">
-                                <i class="fas fa-eye"></i> Lihat semua
-                            </a></li>
-                    </ul>
-                </li>
-            @endif
-
             {{-- 🔹 Dropdown Profil --}}
             <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle" href="#" id="profileDropdown" role="button" data-bs-toggle="dropdown">
                     <i class="fas fa-user-circle"></i> {{ Auth::user()->name }}
+
+                    {{-- 🔹 Badge Status (khusus konsumen) --}}
+                    @if(Auth::user()->role === 'konsumen')
+                        @if(Auth::user()->is_member)
+                            <span class="badge bg-success">Member Aktif</span>
+                        @elseif(Auth::user()->is_verified_member)
+                            <span class="badge bg-warning text-dark">Terverifikasi</span>
+                        @else
+                            <span class="badge bg-secondary">Non-Member</span>
+                        @endif
+                    @else
+                        {{-- Untuk admin/petugas, bisa tampilkan role --}}
+                        <span class="badge bg-info text-dark text-capitalize">{{ Auth::user()->role }}</span>
+                    @endif
                 </a>
                 <ul class="dropdown-menu dropdown-menu-end">
                     <li>
@@ -245,6 +449,24 @@
 <script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js"></script>
 <script src="{{ asset('js/custom.js') }}"></script>
 @stack('scripts')
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // kasih efek fade pas klik pagination
+        document.querySelectorAll('.pagination a').forEach(link => {
+            link.addEventListener('click', function () {
+                document.body.style.transition = 'opacity 0.2s ease';
+                document.body.style.opacity = '0.5';
+            });
+        });
+
+        window.addEventListener('pageshow', function () {
+            document.body.style.opacity = '1';
+        });
+    });
+</script>
+
+
 
 </body>
 </html>

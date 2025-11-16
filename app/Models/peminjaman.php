@@ -25,7 +25,10 @@ class Peminjaman extends Model
         'alamat',
         'request_status',
         'approved_by',
-        'approved_at'];
+        'approved_at',
+        'nama_peminjam',
+        'id_items',
+        'no_transaksi'];
 
     // relasi ke user
     public function user()
