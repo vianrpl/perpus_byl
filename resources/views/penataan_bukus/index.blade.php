@@ -56,7 +56,7 @@
 
     <!-- Tabel daftar penataan -->
     <div class="table-responsive">
-        <table class="table table-bordered table-striped">
+        <table class="table table-modern table-bordered table-striped">
             <thead class="table-dark">
             <tr class="text-center">
                 <th>No</th>

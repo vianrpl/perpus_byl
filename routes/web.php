@@ -25,7 +25,6 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/member/ask', [MemberController::class, 'showAskPage'])->name('member.ask');
     Route::post('/member/send-code', [MemberController::class, 'sendVerificationCode'])->name('member.send_code');
     Route::post('/member/verify-code', [MemberController::class, 'verifyCode'])->name('member.verify_code');
-
     Route::post('/member/register', [MemberController::class, 'submitRegistration'])->name('member.register');
 
     Route::middleware(['role:admin,petugas'])->group(function () {
@@ -35,6 +34,11 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/admin/member/requests/{id}/approve', [AdminMemberController::class, 'approve'])->name('admin.member.approve');
         Route::post('/admin/member/requests/{id}/reject', [AdminMemberController::class, 'reject'])->name('admin.member.reject');
         Route::post('/admin/member/send-code/{id}', [AdminMemberController::class, 'sendCodeToUser'])->name('admin.member.send_code_to_user');
+
+        // Kelola Member (CRUD member langsung dari admin)
+        Route::get('/admin/member/kelola', [AdminMemberController::class, 'kelolaMember'])->name('admin.member.kelola');
+        Route::post('/admin/member/store', [AdminMemberController::class, 'storeMember'])->name('admin.member.store');
+        Route::get('/admin/member/{user}/profile', [AdminMemberController::class, 'showProfile'])->name('admin.member.profile');
     });
 });
 

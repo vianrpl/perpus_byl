@@ -418,6 +418,12 @@
                             <p>Peminjaman</p>
                         </a>
                     </li>
+                        <li class="nav-item">
+                        <a href="{{ route('admin.member.kelola') }}" class="nav-link {{ Request::is('kelolaMember*') ? 'active' : '' }}">
+                            <i class="bi bi-people"></i>
+                            <p>Kelola Member</p>
+                        </a>
+                    </li>
                     @endif
 
 
