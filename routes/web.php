@@ -58,7 +58,7 @@ Route::middleware(['auth'])->group(function () {
     // ==========================
 
     Route::post('/peminjaman/{id}/extend', [PeminjamanController::class, 'extend'])->middleware('can:isStaff')->name('peminjaman.extend');
-    Route::put('/peminjaman/{id}/perpanjang', [PeminjamanController::class, 'perpanjang'])->name('peminjaman.perpanjang');
+    Route::post('/peminjaman/{id}/perpanjang', [PeminjamanController::class, 'perpanjang'])->name('peminjaman.perpanjang');
 
 
     // ==========================
@@ -77,9 +77,12 @@ Route::middleware(['auth'])->group(function () {
     // ==========================
     // RESOURCE INDEX (LIST PEMINJAMAN)
     // ==========================
-    Route::get('/peminjaman', [PeminjamanController::class, 'index'])->name('peminjaman.index');
+    // BENAR: DELETE DULUAN, BARU GET
+    Route::delete('/peminjaman/{id}', [PeminjamanController::class, 'destroy'])
+        ->name('peminjaman.destroy');
 
-    Route::delete('/peminjaman/{id}/hapus', [PeminjamanController::class, 'destroy'])->name('peminjaman.destroy');
+    Route::get('/peminjaman', [PeminjamanController::class, 'index'])
+        ->name('peminjaman.index');
 
     Route::get('/peminjaman/active/{id_member}', [PeminjamanController::class, 'getActiveLoans'])->name('peminjaman.active');
 });

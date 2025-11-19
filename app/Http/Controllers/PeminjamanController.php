@@ -53,8 +53,8 @@ class PeminjamanController extends Controller
         $member = \App\Models\User::findOrFail($idMember);
 
         // HARUS MEMBER
-        if ($member->status !== 'member') {
-            return back()->with('error', 'Hanya member yang bisa meminjam buku.');
+        if ($member->role !== 'konsumen' || $member->status !== 'member') {  // Asumsi role member = 'konsumen'
+            return back()->with('error', 'Hanya member biasa yang bisa meminjam.');
         }
 
         // ANTI DUPLIKAT ITEM DI REQUEST
@@ -111,9 +111,9 @@ class PeminjamanController extends Controller
             // ================================
             //  BATAS PENGEMBALIAN MAX 7 HARI
             // ================================
-            $requestedReturn = Carbon::parse($req->pengembalian);
-            $maxReturn = $now->copy()->addDays(7);
-            $finalReturn = $requestedReturn->gt($maxReturn) ? $maxReturn : $requestedReturn;
+            $userDate = Carbon::parse($req->pengembalian)->startOfDay();
+            $maxDate = $now->copy()->addDays(7)->startOfDay();
+            $dueDate = $userDate->lte($maxDate) ? $userDate : $maxDate;
 
             // ================================
             //  SIMPAN PEMINJAMAN (TANPA no_transaksi dulu)
@@ -126,7 +126,7 @@ class PeminjamanController extends Controller
                 'id_member' => $idMember,
                 'alamat' => $req->alamat,
                 'nama_peminjam' => $req->nama_peminjam,
-                'pengembalian' => $finalReturn,
+                'pengembalian' => $dueDate->format('Y-m-d'),
                 'kondisi' => $firstItem->kondisi,
                 'status' => 'dipinjam',
                 'request_status' => 'approved',
@@ -148,6 +148,8 @@ class PeminjamanController extends Controller
             // ================================
             foreach ($items as $item) {
                 $item->status = 'dipinjam';
+                $item->due_date = $dueDate->format('Y-m-d');  // ✅ SET DUE_DATE!
+                $item->extended_at = null;  // ✅ RESET PERPANJANGAN
                 $item->save();
             }
         });
@@ -228,62 +230,88 @@ class PeminjamanController extends Controller
     }
 
 
+    // 📹 Perpanjangan (dukung multiple/partial items)
     public function perpanjang(Request $request, $id)
     {
-        $peminjaman = Peminjaman::findOrFail($id);
-
-        if ($peminjaman->status !== 'dipinjam') {
-            return back()->with('error', 'Peminjaman ini tidak bisa diperpanjang.');
-        }
-
         $request->validate([
-            'hari' => 'required|integer|min:1|max:7',
+            'hari'    => 'required|integer|min:1|max:7',
+            'items'   => 'required|array|min:1',
+            'items.*' => 'integer|exists:buku_items,id_item',
         ]);
 
-        $peminjaman->pengembalian = \Carbon\Carbon::parse($peminjaman->pengembalian)
-            ->addDays((int)$request->hari);
-        $peminjaman->status = 'diperpanjang';
-        $peminjaman->save();
+        $peminjaman = Peminjaman::findOrFail($id);
 
-        return back()->with('success', "Peminjaman diperpanjang {$request->hari} hari.");
+        $allItems = json_decode($peminjaman->id_items, true) ?? [$peminjaman->id_item];
+        $selectedItems = $request->items;
+
+        if (count(array_diff($selectedItems, $allItems)) > 0) {
+            return back()->with('error', 'Item tidak valid.');
+        }
+
+        // ✅ CEK APAKAH ADA YANG SUDAH PERNAH DIPERPANJANG
+        $alreadyExtended = buku_items::whereIn('id_item', $selectedItems)
+            ->whereNotNull('extended_at')
+            ->get();
+
+        if ($alreadyExtended->count() > 0) {
+            $barcodes = $alreadyExtended->pluck('barcode')->join(', ');
+            return back()->with('error', "Buku berikut sudah pernah diperpanjang: {$barcodes}");
+        }
+
+        // ✅ PERPANJANG DARI TANGGAL DUE_DATE MASING-MASING
+        foreach ($selectedItems as $id_item) {
+            $item = buku_items::findOrFail($id_item);
+
+            // Ambil due_date saat ini, kalau null pakai dari peminjaman
+            $currentDue = $item->due_date ? Carbon::parse($item->due_date) : Carbon::parse($peminjaman->pengembalian);
+
+            // Tambahkan hari perpanjangan
+            $newDue = $currentDue->addDays((int)$request->hari);
+
+            $item->due_date = $newDue->format('Y-m-d');
+            $item->extended_at = now()->format('Y-m-d');
+            $item->save();
+        }
+
+        return back()->with('success', "Berhasil memperpanjang " . count($selectedItems) . " buku!");
     }
 
-
+    // 📹 Pengembalian (dukung partial items)
     public function kembalikan(Request $request, $id)
     {
         $request->validate([
             'kondisi' => 'required|in:baik,rusak,hilang',
+            'items'   => 'required|array|min:1',
+            'items.*' => 'integer|exists:buku_items,id_item',
         ]);
 
-        DB::transaction(function() use ($id, $request) {
-            $p = Peminjaman::lockForUpdate()->findOrFail($id);
-            if (!in_array($p->status, ['dipinjam', 'diperpanjang'])) {
-                abort(400, 'Hanya buku yang sedang dipinjam bisa dikembalikan.');
-            }
+        $peminjaman = Peminjaman::findOrFail($id);
 
-            // ubah status peminjaman — TETAP
-            $p->status = 'kembali';
-            $p->request_status = 'returned';
-            $p->kondisi_buku_saat_kembali = $request->kondisi; // Asumsi kondisi sama untuk semua, kalau beda nanti adjust
-            $p->save();
+        $allItems = json_decode($peminjaman->id_items, true) ?? [$peminjaman->id_item];
+        $selectedItems = $request->items;
 
-            // Handle multiple items dari JSON
-            $idItems = json_decode($p->id_items, true) ?? [$p->id_item]; // Fallback ke legacy
-            foreach ($idItems as $id_item) {
-                $item = buku_items::lockForUpdate()->findOrFail($id_item);
-                $item->kondisi = $request->kondisi;
+        // ✅ UPDATE STATUS & DUE_DATE JADI HARI INI
+        buku_items::whereIn('id_item', $selectedItems)->update([
+            'status'      => $request->kondisi === 'hilang' ? 'hilang' : 'tersedia',
+            'kondisi'     => $request->kondisi,
+            'due_date'    => now()->format('Y-m-d'),  // ✅ TANGGAL KEMBALI = HARI INI
+            'extended_at' => null
+        ]);
 
-                if($request->kondisi === 'hilang'){
-                    $item->status = 'hilang';
-                } else {
-                    $item->status = 'tersedia';
-                }
-                $item->save();
-            }
-        });
+        // ✅ KALAU SEMUA SUDAH KEMBALI → UBAH STATUS PEMINJAMAN
+        $remaining = buku_items::whereIn('id_item', $allItems)
+            ->whereNotIn('status', ['tersedia', 'hilang'])
+            ->count();
 
-        return back()->with('success', 'Buku berhasil dikembalikan dan kondisi diperbarui.');
+        if ($remaining == 0) {
+            $peminjaman->status = 'kembali';
+            $peminjaman->kondisi_buku_saat_kembali = $request->kondisi; // ✅ SIMPAN KONDISI
+            $peminjaman->save();
+        }
+
+        return back()->with('success', 'Buku berhasil dikembalikan!');
     }
+
 
     public function destroy($id)
     {
@@ -362,21 +390,36 @@ class PeminjamanController extends Controller
     {
         $search = $request->input('search');
 
-        $members = \App\Models\User::where('status', 'member')
+        $members = \App\Models\User::where('users.status', 'member')
+            ->whereNotIn('role', ['admin', 'petugas'])
             ->when($search, function ($q, $search) {
                 return $q->where('name', 'like', "%{$search}%")
                     ->orWhere('email', 'like', "%{$search}%");
             })
-            ->withCount(['peminjaman as active_loans' => function ($query) {
-                $query->whereIn('status', ['dipinjam', 'diperpanjang'])
-                    ->select(DB::raw('SUM(JSON_LENGTH(id_items))'));  // Hitung total item dari JSON
-            }])
-            ->orderBy('name')
+            ->leftJoin('peminjaman', function ($join) {
+                $join->on('peminjaman.id_member', '=', 'users.id_user')
+                    ->whereIn('peminjaman.status', ['dipinjam', 'diperpanjang']);
+            })
+            ->select( // ← HANYA PILIH KOLOM YANG DIPAKAI
+                'users.id_user',
+                'users.name',
+                'users.email',
+                'users.status',
+                'users.role'
+            )
+            ->selectRaw('COALESCE(SUM(JSON_LENGTH(peminjaman.id_items)), 0) as active_loans')
+            ->groupBy( // ← HARUS SAMA DENGAN SELECT
+                'users.id_user',
+                'users.name',
+                'users.email',
+                'users.status',
+                'users.role'
+            )
+            ->orderBy('users.name')
             ->paginate(10);
 
-        // Hitung kuota: 2 - active_loans (kalau null, anggap 0)
         foreach ($members as $member) {
-            $member->kuota = max(2 - ($member->active_loans ?? 0), 0);
+            $member->kuota = max(2 - $member->active_loans, 0);
         }
 
         return view('peminjaman.member_table', compact('members'))->render();

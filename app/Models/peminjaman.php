@@ -28,7 +28,14 @@ class Peminjaman extends Model
         'approved_at',
         'nama_peminjam',
         'id_items',
-        'no_transaksi'];
+        'no_transaksi',
+        'id_member'];
+
+    protected $casts = [
+        'pinjam'       => 'date:Y-m-d',        // atau 'date'
+        'pengembalian' => 'date:Y-m-d',        // PALING PENTING!
+        'approved_at'  => 'datetime',
+    ];
 
     // relasi ke user
     public function user()

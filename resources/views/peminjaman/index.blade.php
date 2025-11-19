@@ -93,7 +93,7 @@
                         </button>
 
                         @if($p->status === 'kembali')
-                            <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#hapusModal" data-id="{{ $p->id_peminjaman }}">
+                            <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#hapusModal{{ $p->id_peminjaman }}">
                                 <i class="fas fa-trash-alt"></i> Hapus
                             </button>
                         @endif
@@ -110,23 +110,25 @@
         </div>
     </div>
 
-    {{-- MODAL BUKU DIPINJAM (DI LUAR TABEL, TAPI DI DALAM LOOP) --}}
     @foreach($peminjaman as $p)
-        <div class="modal fade" id="bukuModal{{ $p->id_peminjaman }}" tabindex="-1" aria-labelledby="bukuModalLabel{{ $p->id_peminjaman }}" aria-hidden="true">
-            <div class="modal-dialog modal-lg">
+        <div class="modal fade" id="bukuModal{{ $p->id_peminjaman }}" tabindex="-1">
+            <div class="modal-dialog modal-lg modal-dialog-centered">
                 <div class="modal-content">
-                    <div class="modal-header bg-info text-white">
-                        <h5 class="modal-title" id="bukuModalLabel{{ $p->id_peminjaman }}">Buku Dipinjam #{{ $p->id_peminjaman }}</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <div class="modal-header bg-primary text-white">
+                        <h5 class="modal-title">Buku Dipinjam #{{ $p->no_transaksi }}</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
                         <form id="bulkForm{{ $p->id_peminjaman }}">
-                            <table class="table table-sm">
-                                <thead>
+                            <table class="table table-sm table-hover">
+                                <thead class="table-light">
                                 <tr>
-                                    <th><input type="checkbox" onclick="selectAll(this, '{{ $p->id_peminjaman }}')"></th>
-                                    <th>Judul Buku</th>
+                                    <th width="50">Pilih</th>
+                                    <th>Judul</th>
                                     <th>Barcode</th>
+                                    <th>Status</th>
+                                    <th>Perpanjang?</th>
+                                    <th>Batas Kembali</th>
                                 </tr>
                                 </thead>
                                 <tbody>
@@ -134,31 +136,89 @@
                                     $idItems = json_decode($p->id_items, true) ?? [$p->id_item];
                                     $items = \App\Models\buku_items::with('bukus')->whereIn('id_item', $idItems)->get();
                                 @endphp
-                                @if($items->isEmpty())
-                                    <tr><td colspan="3" class="text-center text-muted">Tidak ada data buku</td></tr>
-                                @else
-                                    @foreach($items as $item)
-                                        <tr>
-                                            <td><input type="checkbox" name="items[]" value="{{ $item->id_item }}"></td>
-                                            <td>{{ $item->bukus->judul ?? 'Judul Tidak Diketahui' }}</td>
-                                            <td>{{ $item->barcode ?? $item->id_item }}</td>
-                                        </tr>
-                                    @endforeach
-                                @endif
+                                @foreach($items as $item)
+                                    <tr class="{{ $item->status == 'tersedia' ? 'table-success' : ($item->status == 'hilang' ? 'table-danger' : '') }}">
+                                        <td>
+                                            {{-- ✅ HANYA BISA PILIH YANG MASIH DIPINJAM --}}
+                                            @if(!in_array($item->status, ['tersedia', 'hilang']))
+                                                <input type="checkbox" name="items[]" value="{{ $item->id_item }}">
+                                            @endif
+                                        </td>
+                                        <td>{{ $item->bukus->judul }}</td>
+                                        <td>{{ $item->barcode }}</td>
+                                        <td>
+                                            @if($item->status == 'tersedia')
+                                                <span class="badge bg-success">✓ Dikembalikan</span>
+                                            @elseif($item->status == 'hilang')
+                                                <span class="badge bg-danger">✗ Hilang</span>
+                                            @else
+                                                <span class="badge bg-primary">Dipinjam</span>
+                                            @endif
+                                        </td>
+                                        <td>
+                                            {{-- ✅ CEK APAKAH SUDAH DIPERPANJANG --}}
+                                            @if($item->extended_at)
+                                                <span class="text-success">
+                                                <i class="fas fa-check-circle"></i>
+                                                Sudah ({{ \Carbon\Carbon::parse($item->extended_at)->format('d/m/Y') }})
+                                            </span>
+                                            @elseif($item->status == 'tersedia' || $item->status == 'hilang')
+                                                <span class="text-muted">-</span>
+                                            @else
+                                                <span class="text-warning">
+                                                <i class="fas fa-clock"></i> Belum
+                                            </span>
+                                            @endif
+                                        </td>
+                                        <td>
+                                            @php
+                                                // ✅ PRIORITAS: due_date dari item, fallback ke pengembalian
+                                                if ($item->due_date) {
+                                                    $displayDate = \Carbon\Carbon::parse($item->due_date);
+                                                } elseif ($p->pengembalian) {
+                                                    // ✅ CEK APAKAH $p->pengembalian ITU STRING ATAU OBJECT
+                                                    $displayDate = is_string($p->pengembalian)
+                                                        ? \Carbon\Carbon::parse($p->pengembalian)
+                                                        : $p->pengembalian;
+                                                } else {
+                                                    $displayDate = null;
+                                                }
+
+                                                $isPast = $displayDate && $displayDate->isPast() && !in_array($item->status, ['tersedia', 'hilang']);
+                                            @endphp
+
+                                            @if($displayDate)
+                                                <span class="{{ $isPast ? 'text-danger fw-bold' : 'text-muted' }}">{{ $displayDate->format('d/m/Y') }}
+                                                    @if($isPast)
+                                                        <i class="fas fa-exclamation-triangle"></i> Telat!
+                                                    @endif
+                                                </span>
+                                            @else
+                                                <span class="text-muted">-</span>
+                                            @endif
+                                        </td>
+                                    </tr>
+                                @endforeach
                                 </tbody>
                             </table>
                         </form>
                     </div>
                     <div class="modal-footer">
-                        @if(in_array($p->status, ['dipinjam', 'diperpanjang']))
-                            <button class="btn btn-warning btn-sm" onclick="bulkAction('perpanjang', '{{ $p->id_peminjaman }}')">
-                                Perpanjang
-                            </button>
-                            <button class="btn btn-success btn-sm" onclick="bulkAction('kembalikan', '{{ $p->id_peminjaman }}')">
-                                Kembalikan
+                        {{-- ✅ TOMBOL PERPANJANG: HANYA UNTUK YANG BELUM DIPERPANJANG & MASIH DIPINJAM --}}
+                        @if($items->where('extended_at', null)->whereNotIn('status', ['tersedia', 'hilang'])->count() > 0)
+                            <button class="btn btn-warning" onclick="bulkAction('perpanjang', '{{ $p->id_peminjaman }}')">
+                                <i class="fas fa-calendar-plus"></i> Perpanjang Terpilih
                             </button>
                         @endif
-                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Tutup</button>
+
+                        {{-- ✅ TOMBOL KEMBALIKAN: HANYA UNTUK YANG MASIH DIPINJAM --}}
+                        @if($items->whereNotIn('status', ['tersedia', 'hilang'])->count() > 0)
+                            <button class="btn btn-success" onclick="bulkAction('kembalikan', '{{ $p->id_peminjaman }}')">
+                                <i class="fas fa-check-circle"></i> Kembalikan Terpilih
+                            </button>
+                        @endif
+
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
                     </div>
                 </div>
             </div>
@@ -190,7 +250,7 @@
                     </div>
                     <div class="modal-footer d-flex justify-content-between">
                         @if(in_array(Auth::user()->role, ['admin', 'petugas']))
-                            <a href="{{ route('admin.member.profile', $p->user->id_user) }}" class="btn btn-info text-white">
+                            <a href="{{ route('admin.member.profile', $p->id_member) }}" class="btn btn-info text-white">
                                 <i class="fas fa-id-card"></i> Data Diri
                             </a>
                         @endif
@@ -202,28 +262,33 @@
     @endforeach
 
     {{-- MODAL HAPUS --}}
-    <div class="modal fade" id="hapusModal" tabindex="-1" aria-labelledby="hapusModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <form id="hapusForm" method="POST">
-                @csrf
-                @method('DELETE')
+    {{-- MODAL KONFIRMASI HAPUS --}}
+    @foreach($peminjaman as $p)
+        <div class="modal fade" id="hapusModal{{ $p->id_peminjaman }}" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content">
                     <div class="modal-header bg-danger text-white">
-                        <h5 class="modal-title" id="hapusModalLabel">Konfirmasi Hapus</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        <h5 class="modal-title">Konfirmasi Hapus Peminjaman</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
-                    <p>Apakah kamu yakin ingin menghapus data peminjaman ini?</p>
-                    <p class="text-danger small fst-italic">Tindakan ini tidak dapat dibatalkan.</p>
+                        <p>Yakin ingin menghapus peminjaman <strong>#{{ $p->no_transaksi }}</strong> atas nama <strong>{{ $p->nama_peminjam }}</strong>?</p>
+                        <p class="text-danger">Data akan hilang permanen!</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+
+                        {{-- FORM DELETE YANG BENAR --}}
+                        <form action="{{ route('peminjaman.destroy', $p->id_peminjaman) }}" method="POST">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="btn btn-danger">Ya, Hapus!</button>
+                        </form>
+                    </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-danger">Hapus</button>
-                </div>
+            </div>
         </div>
-        </form>
-    </div>
-    </div>
+    @endforeach
 
     {{-- MODAL PINJAM BUKU (MODERN) --}}
     <div class="modal fade modal-pinjam fade-in-up" id="pinjamModal" tabindex="-1" aria-labelledby="pinjamModalLabel" aria-hidden="true">
@@ -296,12 +361,14 @@
                         </span>
                         <input type="text" id="searchEksemplar" class="form-control border-0 bg-transparent" placeholder="Cari barcode...">
                     </div>
-                    <div id="eksemplar-table-container" class="mt-3">
+                    <div id="eksemplar-table-container" class="mt-3"></div>
                     <div id="eksemplarPagination" class="d-flex justify-content-center mt-3"></div>
                 </div>
             </div>
         </div>
     </div>
+
+
 
         <div class="modal fade modal-pinjam" id="newPinjamDetailModal" tabindex="-1">
             <div class="modal-dialog modal-dialog-centered">
@@ -326,26 +393,27 @@
                                 <input type="hidden" name="id_user" value="{{ Auth::id() }}">
                             </div>
                             <div class="mb-4">
-                                <label class="form-label fw-bold">Pilih Member</label>
+                                <label class="form-label fw-bold" for="selectedMemberDisplay">Pilih Member</label>  <!-- TAMBAH for -->
                                 <div class="input-group">
                                     <input type="text" id="selectedMemberDisplay" class="form-control" placeholder="Klik untuk pilih member..." readonly>
                                     <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#memberModal">
                                         <i class="fas fa-search"></i> Cari
                                     </button>
                                 </div>
-                                <input type="hidden" name="id_member" id="selectedMemberId">
+                                <input type="hidden" name="id_member" id="selectedMemberId" value="">
+                                <input type="hidden" name="id_user" value="{{ auth()->id() }}"> <!-- Petugas -->
                             </div>
                             <div class="mb-4">
-                                <label class="form-label fw-bold">Nama Peminjam</label>
+                                <label class="form-label fw-bold" for="namaPeminjam">Nama Peminjam</label>  <!-- TAMBAH for -->
                                 <input type="text" name="nama_peminjam" id="namaPeminjam" class="form-control" required readonly>
                             </div>
                             <div class="mb-4">
-                                <label class="form-label fw-bold">Alamat</label>
+                                <label class="form-label fw-bold" for="alamatPeminjam">Alamat</label>  <!-- TAMBAH for -->
                                 <input type="text" name="alamat" id="alamatPeminjam" class="form-control" required placeholder="Masukkan alamat peminjam" readonly>
                             </div>
                             <div class="mb-0">
-                                <label class="form-label fw-bold">Tanggal Pengembalian</label>
-                                <input type="date" name="pengembalian" class="form-control" required
+                                <label class="form-label fw-bold" for="pengembalian">Tanggal Pengembalian</label>  <!-- TAMBAH for -->
+                                <input type="date" name="pengembalian" id="pengembalian" class="form-control" required
                                        min="{{ now()->addDay()->format('Y-m-d') }}"
                                        max="{{ now()->addDays(7)->format('Y-m-d') }}">
                                 <small class="text-muted">Maksimal 7 hari dari sekarang</small>
@@ -387,6 +455,7 @@
 
                     <!-- Table Member -->
                     <div id="member-table-container" class="table-modern mb-4"></div>
+
                 </div>
                 <div class="modal-footer border-0 bg-light">
                     <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Batal</button>
@@ -399,7 +468,7 @@
 
     <!-- Modal Peringatan Max Buku -->
     <div class="modal fade" id="maxBukuModal" tabindex="-1" aria-labelledby="maxBukuLabel" aria-hidden="true">
-        <div class="modal-dialog modal-sm">
+        <div class="modal-dialog modal-sm modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header bg-warning text-dark">
                     <h5 class="modal-title" id="maxBukuLabel">Peringatan</h5>
@@ -415,341 +484,467 @@
         </div>
     </div>
 
+    {{-- MODAL KONFirmasi PERPANJANG --}}
+    <div class="modal fade" id="konfirmPerpanjangModal" tabindex="-1" aria-labelledby="konfirmPerpanjangLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-warning text-white">
+                    <h5 class="modal-title" id="konfirmPerpanjangLabel">Konfirmasi Perpanjangan</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="perpanjangForm" method="POST">
+                    @csrf
+                    <div class="modal-body">
+                        <p>Pilih jumlah hari perpanjangan (maks 7 hari):</p>
+                        <select name="hari" class="form-control" required>
+                            <option value="">Pilih hari</option>
+                            @for($i=1; $i<=7; $i++)
+                                <option value="{{ $i }}">{{ $i }} hari</option>
+                            @endfor
+                        </select>
+                        <div id="selectedItemsPerpanjang" class="mt-3 small text-muted"></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                        <button type="submit" class="btn btn-warning">Perpanjang</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    {{-- MODAL KONFirmasi KEMBALIKAN --}}
+    <div class="modal fade" id="konfirmKembalikanModal" tabindex="-1" aria-labelledby="konfirmKembalikanLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title" id="konfirmKembalikanLabel">Konfirmasi Pengembalian</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="kembalikanForm" method="POST">
+                    @csrf
+                    <div class="modal-body">
+                        <p>Pilih kondisi buku saat dikembalikan:</p>
+                        <select name="kondisi" class="form-control" required>
+                            <option value="">Pilih kondisi</option>
+                            <option value="baik">Baik</option>
+                            <option value="rusak">Rusak</option>
+                            <option value="hilang">Hilang</option>
+                        </select>
+                        <div id="selectedItemsKembalikan" class="mt-3 small text-muted"></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                        <button type="submit" class="btn btn-success">Kembalikan</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
 @endsection
-        @push('scripts')
-            <script>
-                document.addEventListener('DOMContentLoaded', function () {
-                    const pinjamModal = document.getElementById('pinjamModal');
-                    const eksemplarModal = document.getElementById('eksemplarModal');
-                    let selectedItems = [];
-                    let currentIdBuku = '';
-                    let maxSelected = 2;
+@push('scripts')
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const pinjamModal = document.getElementById('pinjamModal');
+            const eksemplarModal = document.getElementById('eksemplarModal');
+            const memberModal = document.getElementById('memberModal');
+            const memberTableContainer = document.getElementById('member-table-container');
+            const searchMemberForm = document.getElementById('search-member-form');
+            const searchMemberInput = document.getElementById('search-member-input');
+            const resetMemberSearch = document.getElementById('reset-member-search');
 
-                    if (pinjamModal) {
-                        pinjamModal.addEventListener('show.bs.modal', () => {
-                            selectedItems = [];
-                            updateSelectedList();
-                            loadBukuTable();
-                            setTimeout(() => {
-                                attachLanjutEvent();
-                            }, 100);
-                        });
-                    }
+            let selectedItems = [];
+            let currentIdBuku = '';
+            let maxSelected = 2;
 
-                    function attachLanjutEvent() {
-                        const lanjutBtn = document.getElementById('lanjutForm');
-                        if (lanjutBtn) {
-                            lanjutBtn.removeEventListener('click', lanjutHandler);
-                            lanjutBtn.addEventListener('click', lanjutHandler);
-                            console.log('Event Lanjut ke-attach!');
+            // ========== PINJAM MODAL ==========
+            if (pinjamModal) {
+                pinjamModal.addEventListener('show.bs.modal', () => {
+                    selectedItems = [];
+                    updateSelectedList();
+                    loadBukuTable();
+                    setTimeout(attachLanjutEvent, 100);
+                });
+            }
+
+            function attachLanjutEvent() {
+                const lanjutBtn = document.getElementById('lanjutForm');
+                if (lanjutBtn) {
+                    lanjutBtn.onclick = null;
+                    lanjutBtn.addEventListener('click', lanjutHandler);
+                }
+            }
+
+            function lanjutHandler() {
+                if (selectedItems.length === 0) {
+                    alert('Pilih minimal 1 buku!');
+                    return;
+                }
+
+                const container = document.getElementById('idItemContainer');
+                if (container) {
+                    container.innerHTML = '';
+                    selectedItems.forEach(item => {
+                        const input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = 'id_item[]';
+                        input.value = item.id_item;
+                        container.appendChild(input);
+                    });
+                }
+
+                const bukuList = document.getElementById('bukuDetailList');
+                if (bukuList) {
+                    bukuList.innerHTML = selectedItems.map(item =>
+                        `<li><strong>${item.barcode}</strong> <small class="text-muted">(${item.kondisi})</small></li>`
+                    ).join('');
+                }
+
+                const pinjamEl = document.getElementById('pinjamModal');
+                const detailEl = document.getElementById('newPinjamDetailModal');
+
+                if (!pinjamEl || !detailEl) {
+                    console.error('Modal tidak ditemukan:', { pinjamEl, detailEl });
+                    return;
+                }
+
+                const bsPinjam = bootstrap.Modal.getInstance(pinjamEl) || new bootstrap.Modal(pinjamEl);
+                bsPinjam.hide();
+
+                pinjamEl.addEventListener('hidden.bs.modal', function openDetail() {
+                    pinjamEl.removeEventListener('hidden.bs.modal', openDetail);
+                    document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
+
+                    const modal = new bootstrap.Modal(detailEl, {
+                        backdrop: 'static',
+                        keyboard: false,
+                        focus: false
+                    });
+                    modal.show();
+
+                    detailEl.addEventListener('shown.bs.modal', () => {
+                        const input = detailEl.querySelector('#selectedMemberDisplay');
+                        if (input) input.focus();
+                    }, { once: true });
+                });
+            }
+
+            // ========== BUKU ==========
+            function attachPilihEksemplarButtons() {
+                document.querySelectorAll('.pilih-eksemplar').forEach(btn => {
+                    btn.onclick = function () {
+                        currentIdBuku = this.dataset.id;
+                        const judul = this.dataset.judul;
+                        document.getElementById('eksemplarModalLabel').textContent = `Pilih Eksemplar: ${judul}`;
+                        loadEksemplar(currentIdBuku);
+                        new bootstrap.Modal(eksemplarModal).show();
+                    };
+                });
+            }
+
+            function loadBukuTable(search = '', page = 1) {
+                fetch(`/peminjaman/bukus?search=${encodeURIComponent(search)}&page=${page}`, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                })
+                    .then(res => res.text())
+                    .then(html => {
+                        document.getElementById('buku-table-container').innerHTML = html;
+                        attachPilihEksemplarButtons();
+                        attachBukuPagination();
+                    });
+            }
+
+            function attachBukuPagination() {
+                document.querySelectorAll('#buku-table-container .pagination a').forEach(link => {
+                    link.onclick = e => {
+                        e.preventDefault();
+                        const url = new URL(link.href);
+                        const search = url.searchParams.get('search') || '';
+                        const page = url.searchParams.get('page') || 1;
+                        loadBukuTable(search, page);
+                    };
+                });
+            }
+
+            // ========== EKSEMPLAR ==========
+            function loadEksemplar(id_buku, search = '', page = 1) {
+                currentIdBuku = id_buku;
+                fetch(`/get-eksemplar-by-buku/${id_buku}?query=${encodeURIComponent(search)}&page=${page}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        let html = `<div class="table-responsive"><table class="table table-sm table-hover"><thead class="table-light"><tr><th>Barcode</th><th>Kondisi</th><th>Aksi</th></tr></thead><tbody>`;
+                        if (data.data.length === 0) {
+                            html += `<tr><td colspan="3" class="text-center text-muted">Tidak ada eksemplar</td></tr>`;
                         } else {
-                            console.error('Tombol #lanjutForm TIDAK DITEMUKAN!');
+                            data.data.forEach(item => {
+                                const isSelected = selectedItems.some(s => s.id_item === item.id_item);
+                                html += `<tr class="${isSelected ? 'table-secondary' : ''}">
+                        <td>${item.barcode}</td>
+                        <td><span class="badge bg-success">${item.kondisi}</span></td>
+                        <td>
+                            <button class="btn btn-sm btn-primary pilih-item"
+                                    data-id="${item.id_item}"
+                                    data-barcode="${item.barcode}"
+                                    data-kondisi="${item.kondisi}"
+                                    ${isSelected ? 'disabled' : ''}>Pilih</button>
+                        </td>
+                    </tr>`;
+                            });
                         }
-                    }
+                        html += `</tbody></table></div>`;
+                        html += data.links || '';
+                        document.getElementById('eksemplar-table-container').innerHTML = html;
+                        attachEksemplarButtons();
+                        attachEksemplarPagination(search);
+                    });
+            }
 
-                    function lanjutHandler() {
-                        console.log('LANJUT DIKLIK! selectedItems:', selectedItems.length);
+            function attachEksemplarPagination(currentSearch) {
+                document.querySelectorAll('#eksemplar-table-container .pagination a').forEach(link => {
+                    link.onclick = e => {
+                        e.preventDefault();
+                        const url = new URL(link.href);
+                        const page = url.searchParams.get('page') || 1;
+                        loadEksemplar(currentIdBuku, currentSearch, page);
+                    };
+                });
+            }
 
-                        if (selectedItems.length === 0) {
-                            alert('Pilih minimal 1 buku!');
-                            return;
-                        }
-                        if (selectedItems.length > maxSelected) {
+            function attachEksemplarButtons() {
+                document.querySelectorAll('.pilih-item').forEach(btn => {
+                    btn.onclick = function () {
+                        const id = parseInt(this.dataset.id);
+                        if (selectedItems.some(s => s.id_item === id)) return;
+                        if (selectedItems.length >= maxSelected) {
                             new bootstrap.Modal(document.getElementById('maxBukuModal')).show();
                             return;
                         }
-
-                        // Isi hidden inputs
-                        const container = document.getElementById('idItemContainer');
-                        if (!container) return console.error('idItemContainer tidak ditemukan!');
-                        container.innerHTML = '';
-                        selectedItems.forEach(item => {
-                            const input = document.createElement('input');
-                            input.type = 'hidden';
-                            input.name = 'id_item[]';
-                            input.value = item.id;
-                            container.appendChild(input);
+                        selectedItems.push({
+                            id_item: id,
+                            barcode: this.dataset.barcode,
+                            kondisi: this.dataset.kondisi
                         });
-
-                        // Isi daftar buku di detail modal
-                        const bukuList = document.getElementById('bukuDetailList');
-                        if (bukuList) {
-                            bukuList.innerHTML = selectedItems.map(item =>
-                                `<li><strong>${item.barcode}</strong> <small class="text-muted">(${item.kondisi})</small></li>`
-                            ).join('');
-                        }
-
-                        // Paksa tutup pinjamModal dan buka detail dengan fix ARIA
-                        try {
-                            const pinjamModalEl = document.getElementById('pinjamModal');
-                            if (!pinjamModalEl) throw new Error('pinjamModalEl tidak ditemukan!');
-
-                            const bsPinjam = bootstrap.Modal.getInstance(pinjamModalEl) || new bootstrap.Modal(pinjamModalEl, { focus: false });
-                            bsPinjam.hide();
-
-                            // Tunggu hidden event sebelum buka detail
-                            const onHidden = () => {
-                                pinjamModalEl.removeEventListener('hidden.bs.modal', onHidden);
-                                console.log('BUKA DETAIL MODAL SEKARANG!');
-                                const detailModalEl = document.getElementById('newPinjamDetailModal');
-                                if (!detailModalEl) throw new Error('newPinjamDetailModal tidak ditemukan!');
-
-                                // Hapus backdrop lama untuk hindari overlap
-                                document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
-
-                                // Buka dengan focus false untuk fix ARIA
-                                const modal = new bootstrap.Modal(detailModalEl, { backdrop: 'static', focus: false });
-                                modal.show();
-
-                                // Manual pindah focus setelah show
-                                detailModalEl.addEventListener('shown.bs.modal', () => {
-                                    const firstInput = detailModalEl.querySelector('#selectedMemberDisplay');
-                                    if (firstInput) firstInput.focus();
-                                    console.log('Focus dipindah ke detail modal!');
-                                }, { once: true });
-                            };
-
-                            if (!pinjamModalEl.classList.contains('show')) {
-                                onHidden();
-                            } else {
-                                pinjamModalEl.addEventListener('hidden.bs.modal', onHidden);
-                            }
-                        } catch (e) {
-                            console.error('Error saat tutup/buka modal:', e);
-                            // Fallback: Buka detail langsung
-                            const detailModalEl = document.getElementById('newPinjamDetailModal');
-                            if (detailModalEl) {
-                                document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
-                                new bootstrap.Modal(detailModalEl, { backdrop: 'static', focus: false }).show();
-                                setTimeout(() => {
-                                    detailModalEl.querySelector('#selectedMemberDisplay')?.focus();
-                                }, 100);
-                            }
-                        }
-                    }
-
-                    // === FUNGSI LAIN TETAP SAMA ===
-                    function attachPilihEksemplarButtons() {
-                        document.querySelectorAll('.pilih-eksemplar').forEach(btn => {
-                            btn.onclick = function () {
-                                currentIdBuku = this.dataset.id;
-                                const judul = this.dataset.judul;
-                                document.getElementById('eksemplarModalLabel').textContent = `Pilih Eksemplar: ${judul}`;
-                                loadEksemplar(currentIdBuku);
-                                new bootstrap.Modal(eksemplarModal).show();
-                            };
-                        });
-                    }
-
-                    function loadBukuTable(search = '', page = 1) {
-                        fetch(`/peminjaman/bukus?search=${encodeURIComponent(search)}&page=${page}`, {
-                            headers: { 'X-Requested-With': 'XMLHttpRequest' }
-                        })
-                            .then(res => res.text())
-                            .then(html => {
-                                document.getElementById('buku-table-container').innerHTML = html;
-                                attachPilihEksemplarButtons();
-                                attachBukuPagination();
-                            });
-                    }
-
-                    function attachBukuPagination() {
-                        document.querySelectorAll('#buku-table-container .pagination a').forEach(link => {
-                            link.onclick = e => {
-                                e.preventDefault();
-                                const url = new URL(link.href);
-                                const search = url.searchParams.get('search') || '';
-                                const page = url.searchParams.get('page') || 1;
-                                loadBukuTable(search, page);
-                            };
-                        });
-                    }
-
-                    function loadEksemplar(id_buku, search = '', page = 1) {
-                        currentIdBuku = id_buku;
-                        const url = `/get-eksemplar-by-buku/${id_buku}?query=${encodeURIComponent(search)}&page=${page}`;
-
-                        fetch(url)
-                            .then(res => res.json())
-                            .then(data => {
-                                let html = `
-                            <div class="table-responsive">
-                                <table class="table table-sm table-hover">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th>Barcode</th>
-                                            <th>Kondisi</th>
-                                            <th>Aksi</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                        `;
-
-                                if (data.data.length === 0) {
-                                    html += `<tr><td colspan="3" class="text-center text-muted">Tidak ada eksemplar tersedia</td></tr>`;
-                                } else {
-                                    data.data.forEach(item => {
-                                        const isSelected = selectedItems.some(s => s.id === item.id_item);
-                                        html += `
-                                    <tr class="${isSelected ? 'table-secondary' : ''}">
-                                        <td>${item.barcode}</td>
-                                        <td><span class="badge bg-success">${item.kondisi}</span></td>
-                                        <td>
-                                            <button class="btn btn-sm btn-primary pilih-item"
-                                                    data-id="${item.id_item}"
-                                                    data-barcode="${item.barcode}"
-                                                    data-kondisi="${item.kondisi}"
-                                                    ${isSelected ? 'disabled' : ''}>
-                                                Pilih
-                                            </button>
-                                        </td>
-                                    </tr>
-                                `;
-                                    });
-                                }
-
-                                html += `</tbody></table></div>`;
-                                html += data.links || '';
-                                document.getElementById('eksemplar-table-container').innerHTML = html;
-                                attachEksemplarButtons();
-                                attachEksemplarPagination(search);
-                            });
-                    }
-
-                    function attachEksemplarPagination(currentSearch) {
-                        document.querySelectorAll('#eksemplar-table-container .pagination a').forEach(link => {
-                            link.onclick = e => {
-                                e.preventDefault();
-                                const url = new URL(link.href);
-                                const page = url.searchParams.get('page') || 1;
-                                loadEksemplar(currentIdBuku, currentSearch, page);
-                            };
-                        });
-                    }
-
-                    function attachEksemplarButtons() {
-                        document.querySelectorAll('.pilih-item').forEach(btn => {
-                            btn.onclick = function () {
-                                const id = parseInt(this.dataset.id);
-                                if (selectedItems.some(s => s.id === id)) return;
-                                if (selectedItems.length >= maxSelected) {
-                                    new bootstrap.Modal(document.getElementById('maxBukuModal')).show();
-                                    return;
-                                }
-                                selectedItems.push({
-                                    id: id,
-                                    barcode: this.dataset.barcode,
-                                    kondisi: this.dataset.kondisi
-                                });
-                                updateSelectedList();
-                                loadEksemplar(currentIdBuku, document.getElementById('searchEksemplar')?.value || '');
-                                // Tutup modal eksemplar
-                                const closeBtn = eksemplarModal.querySelector('.btn-close');
-                                if (closeBtn) closeBtn.click();
-                            };
-                        });
-                    }
-
-                    function updateSelectedList() {
-                        const list = document.getElementById('selectedBuku');
-                        const count = document.getElementById('selectedCount');
-                        const card = document.getElementById('selectedCard');
-                        const lanjutBtn = document.getElementById('lanjutForm');
-                        if (list) {
-                            list.innerHTML = selectedItems.map((item, i) => {
-                                return `
-                            <div class="d-flex justify-content-between align-items-center p-2 border rounded mb-2 bg-light">
-                                <div>
-                                    <strong>${item.barcode}</strong>
-                                    <small class="text-muted d-block">Kondisi: ${item.kondisi}</small>
-                                </div>
-                                <button class="btn btn-sm btn-danger" onclick="removeItem(${i})">
-                                    <i class="fas fa-times"></i>
-                                </button>
-                            </div>
-                        `;
-                            }).join('');
-                        }
-                        if (count) count.textContent = selectedItems.length;
-                        if (card) card.style.display = selectedItems.length ? 'block' : 'none';
-                        if (lanjutBtn) lanjutBtn.disabled = selectedItems.length === 0;
-                    }
-
-                    window.removeItem = function (index) {
-                        selectedItems.splice(index, 1);
                         updateSelectedList();
+                        loadEksemplar(currentIdBuku, document.getElementById('searchEksemplar')?.value || '');
+                        eksemplarModal.querySelector('.btn-close')?.click();
                     };
+                });
+            }
 
-                    document.getElementById('search-buku-form')?.addEventListener('submit', e => {
-                        e.preventDefault();
-                        const query = document.getElementById('search-buku-input').value.trim();
-                        loadBukuTable(query);
-                    });
+            function updateSelectedList() {
+                const list = document.getElementById('selectedBuku');
+                const count = document.getElementById('selectedCount');
+                const card = document.getElementById('selectedCard');
+                const lanjutBtn = document.getElementById('lanjutForm');
 
-                    document.getElementById('reset-buku-search')?.addEventListener('click', () => {
-                        document.getElementById('search-buku-input').value = '';
-                        loadBukuTable();
-                    });
+                if (list) {
+                    list.innerHTML = selectedItems.map((item, i) => `
+                <div class="d-flex justify-content-between align-items-center p-2 border rounded mb-2 bg-light">
+                    <div><strong>${item.barcode}</strong><small class="text-muted d-block">Kondisi: ${item.kondisi}</small></div>
+                    <button class="btn btn-sm btn-danger" onclick="removeItem(${i})"><i class="fas fa-times"></i></button>
+                </div>
+            `).join('');
+                }
+                if (count) count.textContent = selectedItems.length;
+                if (card) card.style.display = selectedItems.length ? 'block' : 'none';
+                if (lanjutBtn) lanjutBtn.disabled = selectedItems.length === 0;
+            }
 
-                    document.getElementById('searchEksemplar')?.addEventListener('input', function () {
-                        if (currentIdBuku) {
-                            loadEksemplar(currentIdBuku, this.value.trim());
-                        }
-                    });
+            // ========== BULK ACTION: Perpanjang & Kembalikan ==========
+            function selectAll(checkbox, peminjamanId) {
+                const form = document.getElementById(`bulkForm${peminjamanId}`);
+                const checkboxes = form.querySelectorAll('input[name="items[]"]');
+                checkboxes.forEach(cb => cb.checked = checkbox.checked);
+            }
 
-                    function attachMemberButtons() {
-                        document.querySelectorAll('.pilih-member').forEach(btn => {
-                            btn.onclick = async function () {
-                                const id = this.dataset.id;
-                                const nama = this.dataset.nama;
-                                try {
-                                    const res = await fetch(`/peminjaman/active/${id}`);
-                                    const data = await res.json();
-                                    const active = data.active || 0;
-                                    maxSelected = 2 - active;
-                                    if (maxSelected <= 0) {
-                                        new bootstrap.Modal(document.getElementById('maxBukuModal')).show();
-                                        return;
-                                    }
-                                    if (selectedItems.length > maxSelected) {
-                                        selectedItems = selectedItems.slice(0, maxSelected);
-                                        updateSelectedList();
-                                        new bootstrap.Modal(document.getElementById('maxBukuModal')).show();
-                                    }
-                                    document.getElementById('selectedMemberId').value = id;
-                                    document.getElementById('selectedMemberDisplay').value = nama;
-                                    document.getElementById('namaPeminjam').value = nama;
-                                    document.getElementById('alamatPeminjam').value = '';
-                                    document.getElementById('alamatPeminjam').removeAttribute('readonly');
-                                    bootstrap.Modal.getInstance(document.getElementById('memberModal')).hide();
-                                    new bootstrap.Modal(document.getElementById('newPinjamDetailModal')).show();
-                                } catch (err) {
-                                    alert('Gagal cek kuota.');
-                                }
-                            };
-                        });
-                    }
+            window.bulkAction = function(action, peminjamanId) {
+                const form = document.getElementById(`bulkForm${peminjamanId}`);
+                const checked = Array.from(form.querySelectorAll('input[name="items[]"]:checked'))
+                    .map(cb => ({
+                        id: cb.value,
+                        barcode: cb.closest('tr').querySelector('td:nth-child(3)')?.textContent.trim() || 'Unknown'
+                    }));
 
-                    document.getElementById('pinjamForm')?.addEventListener('submit', async function (e) {
-                        e.preventDefault();
-                        const memberId = document.getElementById('selectedMemberId')?.value;
-                        if (!memberId) {
-                            alert('Pilih member dulu!');
-                            new bootstrap.Modal(document.getElementById('memberModal')).show();
-                            return;
-                        }
+                if (checked.length === 0) {
+                    alert('Pilih minimal 1 buku!');
+                    return;
+                }
+
+                let modalId, formId, route;
+                if (action === 'perpanjang') {
+                    modalId = 'konfirmPerpanjangModal';
+                    formId = 'perpanjangForm';  // BENAR
+                    route = `/peminjaman/${peminjamanId}/perpanjang`;
+                } else if (action === 'kembalikan') {
+                    modalId = 'konfirmKembalikanModal';
+                    formId = 'kembalikanForm';  // BENAR
+                    route = `/peminjaman/${peminjamanId}/kembalikan`;
+                }
+
+                // Isi daftar item yang dipilih
+                const listEl = document.getElementById(`selectedItems${action.charAt(0).toUpperCase() + action.slice(1)}`);
+                if (listEl) {
+                    listEl.innerHTML = '<strong>Buku dipilih:</strong><ul class="mb-0 ps-3">' +
+                        checked.map(item => `<li>${item.barcode}</li>`).join('') + '</ul>';
+                }
+
+                // Setup form
+                const targetForm = document.getElementById(formId);
+                if (!targetForm) {
+                    console.error('Form tidak ditemukan:', formId);
+                    return;
+                }
+                targetForm.action = route;
+
+                // Hapus input lama
+                targetForm.querySelectorAll('input[name="items[]"]').forEach(el => el.remove());
+
+                // Tambah input hidden untuk item
+                checked.forEach(item => {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'items[]';
+                    input.value = item.id;
+                    targetForm.appendChild(input);
+                });
+
+                // Buka modal
+                new bootstrap.Modal(document.getElementById(modalId)).show();
+            };
+
+            window.removeItem = function (index) {
+                selectedItems.splice(index, 1);
+                updateSelectedList();
+            };
+
+            document.getElementById('search-buku-form')?.addEventListener('submit', e => {
+                e.preventDefault();
+                const query = document.getElementById('search-buku-input').value.trim();
+                loadBukuTable(query);
+            });
+
+            document.getElementById('reset-buku-search')?.addEventListener('click', () => {
+                document.getElementById('search-buku-input').value = '';
+                loadBukuTable();
+            });
+
+            document.getElementById('searchEksemplar')?.addEventListener('input', function () {
+                if (currentIdBuku) loadEksemplar(currentIdBuku, this.value.trim());
+            });
+
+            // ========== MEMBER (SEMUA DI DALAM DOMContentLoaded) ==========
+            function attachMemberButtons() {
+                document.querySelectorAll('.pilih-member').forEach(btn => {
+                    btn.onclick = async function () {
+                        const id = this.dataset.id;
+                        const nama = this.dataset.nama;
                         try {
-                            const res = await fetch(`/peminjaman/active/${memberId}`);
+                            const res = await fetch(`/peminjaman/active/${id}`);
                             const data = await res.json();
-                            if (selectedItems.length > (2 - (data.active || 0))) {
+                            const active = data.active || 0;
+                            maxSelected = 2 - active;
+
+                            if (maxSelected <= 0) {
                                 new bootstrap.Modal(document.getElementById('maxBukuModal')).show();
                                 return;
                             }
-                            this.submit();
+
+                            if (selectedItems.length > maxSelected) {
+                                selectedItems = selectedItems.slice(0, maxSelected);
+                                updateSelectedList();
+                                new bootstrap.Modal(document.getElementById('maxBukuModal')).show();
+                            }
+
+                            document.getElementById('selectedMemberId').value = id;
+                            document.getElementById('selectedMemberDisplay').value = nama;
+                            document.getElementById('namaPeminjam').value = nama;
+                            document.getElementById('alamatPeminjam').value = '';
+                            document.getElementById('alamatPeminjam').removeAttribute('readonly');
+
+                            bootstrap.Modal.getInstance(document.getElementById('memberModal')).hide();
+                            new bootstrap.Modal(document.getElementById('newPinjamDetailModal')).show();
                         } catch (err) {
                             alert('Gagal cek kuota.');
                         }
-                    });
+                    };
                 });
-            </script>
-    @endpush
+            }
+
+            if (memberModal) {
+                memberModal.addEventListener('show.bs.modal', () => {
+                    loadMemberTable();
+                });
+            }
+
+            function loadMemberTable(search = '', page = 1) {
+                const url = `/peminjaman/members?search=${encodeURIComponent(search)}&page=${page}`;
+
+                memberTableContainer.innerHTML = '<div class="text-center"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+
+                fetch(url, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                })
+                    .then(res => res.text())
+                    .then(html => {
+                        memberTableContainer.innerHTML = html;
+                        attachMemberButtons();  // SEKARANG AMAN!
+                        attachMemberPagination();
+                    })
+                    .catch(err => {
+                        memberTableContainer.innerHTML = '<p class="text-danger text-center">Gagal memuat member.</p>';
+                        console.error(err);
+                    });
+            }
+
+            function attachMemberPagination() {
+                document.querySelectorAll('#member-table-container .pagination a').forEach(link => {
+                    link.onclick = e => {
+                        e.preventDefault();
+                        const url = new URL(link.href);
+                        const search = url.searchParams.get('search') || '';
+                        const page = url.searchParams.get('page') || 1;
+                        loadMemberTable(search, page);
+                    };
+                });
+            }
+
+            if (searchMemberForm) {
+                searchMemberForm.addEventListener('submit', e => {
+                    e.preventDefault();
+                    loadMemberTable(searchMemberInput.value.trim());
+                });
+            }
+
+            if (resetMemberSearch) {
+                resetMemberSearch.addEventListener('click', () => {
+                    searchMemberInput.value = '';
+                    loadMemberTable();
+                });
+            }
+
+            // ========== SUBMIT FORM ==========
+            document.getElementById('pinjamForm')?.addEventListener('submit', async function (e) {
+                e.preventDefault();
+                const memberId = document.getElementById('selectedMemberId')?.value;
+                if (!memberId) {
+                    alert('Pilih member dulu!');
+                    new bootstrap.Modal(document.getElementById('memberModal')).show();
+                    return;
+                }
+                try {
+                    const res = await fetch(`/peminjaman/active/${memberId}`);
+                    const data = await res.json();
+                    if (selectedItems.length > (2 - (data.active || 0))) {
+                        new bootstrap.Modal(document.getElementById('maxBukuModal')).show();
+                        return;
+                    }
+                    this.submit();
+                } catch (err) {
+                    alert('Gagal cek kuota.');
+                }
+            });
+        });
+    </script>
+@endpush
+
