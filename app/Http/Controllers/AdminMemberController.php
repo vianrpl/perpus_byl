@@ -13,26 +13,26 @@ use Carbon\Carbon;
 
 class AdminMemberController extends Controller
 {
-    // Halaman daftar permintaan member (dari konsumen)
-    public function index()
+    // Halaman Kelola Member (dengan search & pagination)
+    public function kelolaMember(Request $request)
     {
-        $requests = MemberProfile::with('user')
-            ->whereIn('request_status', ['pending', 'approved', 'rejected'])
-            ->orderBy('created_at', 'asc')
-            ->get();
-        return view('admin.member.requests', compact('requests'));
-    }
+        $search = $request->input('search');
 
-    // Halaman Kelola Member (List semua member)
-    public function kelolaMember()
-    {
         $members = MemberProfile::with('user')
-            ->whereHas('user', function($q) {
-                $q->where('role', 'konsumen')
-                    ->where('status', 'member');
+            ->where('request_status', 'approved')
+            ->when($search, function($query, $search) {
+                $query->where(function($q) use ($search) {
+                    $q->where('no_member', 'like', "%{$search}%")
+                        ->orWhere('nama_lengkap', 'like', "%{$search}%")
+                        ->orWhere('no_hp', 'like', "%{$search}%")
+                        ->orWhereHas('user', function($q) use ($search) {
+                            $q->where('email', 'like', "%{$search}%");
+                        });
+                });
             })
-            ->orderBy('created_at', 'asc')
-            ->paginate(10);
+            ->orderBy('created_at', 'desc')
+            ->paginate(10)
+            ->withQueryString();
 
         return view('admin.member.kelola', compact('members'));
     }
@@ -55,7 +55,7 @@ class AdminMemberController extends Controller
         $user = User::create([
             'name' => $request->nama_lengkap,
             'email' => $request->email,
-            'password' => Hash::make(Str::random(16)), // random password
+            'password' => Hash::make('member123'), // password default
             'role' => 'konsumen',
             'status' => 'member',
             'is_verified_member' => true,
@@ -63,18 +63,7 @@ class AdminMemberController extends Controller
         ]);
 
         // 2. Generate nomor member
-        $tanggal = date('Ymd');
-        $idKegiatan = '02'; // konsisten untuk daftar member
-
-        // Cari nomor urut terakhir hari ini
-        $lastMember = MemberProfile::whereDate('created_at', today())
-            ->orderBy('id', 'desc')
-            ->first();
-
-        $noUrut = $lastMember ?
-            intval(substr($lastMember->no_member, -3)) + 1 : 1;
-
-        $noMember = $tanggal . $idKegiatan . str_pad($user->id_user, 4, '0', STR_PAD_LEFT) . str_pad($noUrut, 3, '0', STR_PAD_LEFT);
+        $noMember = $this->generateNomorMember($user->id_user);
 
         // 3. Upload files
         $foto3x4Path = $request->file('foto_3x4')->store('member_docs', 'public');
@@ -100,7 +89,7 @@ class AdminMemberController extends Controller
         ]);
 
         return redirect()->route('admin.member.kelola')
-            ->with('success', 'Member berhasil didaftarkan dengan No. Member: ' . $noMember);
+            ->with('success', 'Member berhasil didaftarkan! No. Member: ' . $noMember);
     }
 
     // Approve permintaan member (dari konsumen)
@@ -110,18 +99,7 @@ class AdminMemberController extends Controller
         $user = $profile->user;
 
         // Generate nomor member
-        $tanggal = date('Ymd');
-        $idKegiatan = '02';
-
-        $lastMember = MemberProfile::whereDate('approved_at', today())
-            ->whereNotNull('approved_at')
-            ->orderBy('id', 'desc')
-            ->first();
-
-        $noUrut = $lastMember ?
-            intval(substr($lastMember->no_member, -3)) + 1 : 1;
-
-        $noMember = $tanggal . $idKegiatan . str_pad($user->id_user, 4, '0', STR_PAD_LEFT) . str_pad($noUrut, 3, '0', STR_PAD_LEFT);
+        $noMember = $this->generateNomorMember($user->id_user);
 
         $profile->update([
             'no_member' => $noMember,
@@ -135,7 +113,7 @@ class AdminMemberController extends Controller
             'status' => 'member',
         ]);
 
-        return back()->with('success', 'Member berhasil disetujui dengan No. Member: ' . $noMember);
+        return back()->with('success', 'Member disetujui! No. Member: ' . $noMember);
     }
 
     public function reject($id)
@@ -149,12 +127,37 @@ class AdminMemberController extends Controller
     public function showProfile($userId)
     {
         $user = User::with('memberProfile')->findOrFail($userId);
-        $profile = $user->memberProfile ?? MemberProfile::firstOrCreate(['user_id' => $userId]);
+        $profile = $user->memberProfile;
+
+        if (!$profile) {
+            return back()->withErrors('Member profile tidak ditemukan.');
+        }
 
         return view('admin.member.profile', compact('user', 'profile'));
     }
 
-    // Kirim kode verifikasi ke user
+    // Generate nomor member
+    private function generateNomorMember($userId)
+    {
+        $tanggal = date('Ymd'); // YYYYMMDD
+        $idKegiatan = '02'; // Konsisten untuk daftar member
+
+        // Cari nomor urut terakhir hari ini
+        $lastMember = MemberProfile::whereDate('created_at', today())
+            ->whereNotNull('no_member')
+            ->orderBy('id', 'desc')
+            ->first();
+
+        $noUrut = $lastMember ?
+            intval(substr($lastMember->no_member, -3)) + 1 : 1;
+
+        // Format: YYYYMMDD + 02 + user_id(4 digit) + no_urut(3 digit)
+        return $tanggal . $idKegiatan .
+            str_pad($userId, 4, '0', STR_PAD_LEFT) .
+            str_pad($noUrut, 3, '0', STR_PAD_LEFT);
+    }
+
+    // Kirim kode verifikasi
     public function sendCodeToUser($id)
     {
         $profile = MemberProfile::findOrFail($id);

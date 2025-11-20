@@ -3,7 +3,7 @@
 @section('content')
     <div class="container">
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h3>Kelola Member Perpustakaan</h3>
+            <h3><i class="fas fa-users"></i> Kelola Member Perpustakaan</h3>
             <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#tambahMemberModal">
                 <i class="fas fa-user-plus"></i> Daftar Member Baru
             </button>
@@ -16,27 +16,58 @@
             </div>
         @endif
 
+        @if($errors->any())
+            <div class="alert alert-danger alert-dismissible fade show">
+                <ul class="mb-0">
+                    @foreach($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        @endif
+
+        {{-- Form Search --}}
+        <form action="{{ route('admin.member.kelola') }}" method="GET" class="mb-3">
+            <div class="input-group" style="max-width:500px">
+                <input type="text" name="search" class="form-control"
+                       placeholder="Cari member (nama, email, no member, no HP)"
+                       value="{{ request('search') }}">
+                <button class="btn btn-primary" type="submit">
+                    <i class="fas fa-search"></i> Cari
+                </button>
+                @if(request('search'))
+                    <a href="{{ route('admin.member.kelola') }}" class="btn btn-secondary">
+                        <i class="fas fa-times"></i> Reset
+                    </a>
+                @endif
+            </div>
+        </form>
 
 
                 <div class="table-responsive">
-                    <table class="table table-modern table-bordered table-striped fade-in">
+                    <table class="table table-modern table-bordered table-striped">
                         <thead class="table-dark">
                         <tr class="text-center">
-                            <th>No</th>
-                            <th>No. Member</th>
+                            <th class="text-center">No</th>
+                            <th class="text-center">No. Member</th>
                             <th>Nama Lengkap</th>
                             <th>Email</th>
                             <th>No. HP</th>
                             <th>Profesi</th>
-                            <th>Tanggal Daftar</th>
-                            <th>Aksi</th>
+                            <th class="text-center">Tanggal Daftar</th>
+                            <th class="text-center">Aksi</th>
                         </tr>
                         </thead>
                         <tbody>
-                        @forelse($members as $index => $member)
-                            <tr class="text-center">
-                                <td class="text-center">{{ ($members->currentPage() - 1) * $members->perPage() + $loop->iteration }}</td>
-                                <td class="text-center"><strong>{{ $member->no_member }}</strong></td>
+                        @forelse($members as $member)
+                            <tr>
+                                <td class="text-center">
+                                    {{ ($members->currentPage() - 1) * $members->perPage() + $loop->iteration }}
+                                </td>
+                                <td class="text-center">
+                                    <strong class="text-primary">{{ $member->no_member }}</strong>
+                                </td>
                                 <td>{{ $member->nama_lengkap }}</td>
                                 <td>{{ $member->user->email }}</td>
                                 <td>{{ $member->no_hp }}</td>
@@ -52,7 +83,11 @@
                         @empty
                             <tr>
                                 <td colspan="8" class="text-center text-muted py-4">
-                                    Belum ada member terdaftar
+                                    @if(request('search'))
+                                        Tidak ada member yang sesuai dengan pencarian "{{ request('search') }}"
+                                    @else
+                                        Belum ada member terdaftar
+                                    @endif
                                 </td>
                             </tr>
                         @endforelse
@@ -60,80 +95,13 @@
                     </table>
                 </div>
 
+                {{-- Pagination --}}
                 <div class="d-flex justify-content-center mt-3">
                     {{ $members->links('pagination::bootstrap-5') }}
                 </div>
     </div>
 
-    <!-- Modal Tambah Member -->
-    <div class="modal fade" id="tambahMemberModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-lg">
-            <form method="POST" action="{{ route('admin.member.store') }}" enctype="multipart/form-data">
-                @csrf
-                <div class="modal-content">
-                    <div class="modal-header bg-success text-white">
-                        <h5 class="modal-title"><i class="fas fa-user-plus"></i> Formulir Pendaftaran Member</h5>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Email <span class="text-danger">*</span></label>
-                                <input type="email" name="email" class="form-control" required
-                                       placeholder="contoh@email.com">
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Nama Lengkap <span class="text-danger">*</span></label>
-                                <input type="text" name="nama_lengkap" class="form-control" required
-                                       placeholder="Masukkan nama lengkap">
-                            </div>
-                        </div>
+    {{-- Modal Tambah Member --}}
+    @include('admin.member.partials.tambah_modal')
 
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Nomor HP <span class="text-danger">*</span></label>
-                                <input type="text" name="no_hp" class="form-control" required
-                                       placeholder="08xxxxxxxxxx" maxlength="12">
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Profesi</label>
-                                <input type="text" name="profesi" class="form-control"
-                                       placeholder="Pelajar/Mahasiswa/Umum">
-                            </div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label">Alamat Lengkap <span class="text-danger">*</span></label>
-                            <textarea name="alamat" class="form-control" rows="3" required
-                                      placeholder="Masukkan alamat lengkap"></textarea>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label">Foto 3x4 <span class="text-danger">*</span></label>
-                                <input type="file" name="foto_3x4" class="form-control" required accept="image/*">
-                                <small class="text-muted">Max 2MB</small>
-                            </div>
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label">Foto KTP</label>
-                                <input type="file" name="ktp" class="form-control" accept="image/*">
-                                <small class="text-muted">Max 2MB</small>
-                            </div>
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label">Kartu Pelajar</label>
-                                <input type="file" name="student_card" class="form-control" accept="image/*">
-                                <small class="text-muted">Opsional, Max 2MB</small>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                        <button type="submit" class="btn btn-success">
-                            <i class="fas fa-save"></i> Daftar
-                        </button>
-                    </div>
-                </div>
-            </form>
-        </div>
-    </div>
 @endsection

@@ -419,11 +419,12 @@
                         </a>
                     </li>
                         <li class="nav-item">
-                        <a href="{{ route('admin.member.kelola') }}" class="nav-link {{ Request::is('kelolaMember*') ? 'active' : '' }}">
-                            <i class="bi bi-people"></i>
-                            <p>Kelola Member</p>
-                        </a>
-                    </li>
+                            <a href="{{ route('admin.member.kelola') }}"
+                               class="nav-link {{ Request::is('admin/member/kelola*') ? 'active' : '' }}">
+                                <i class="nav-icon fas fa-id-card"></i>
+                                <p>Kelola Member</p>
+                            </a>
+                        </li>
                     @endif
 
 
