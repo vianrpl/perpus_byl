@@ -29,6 +29,7 @@ class Peminjaman extends Model
         'nama_peminjam',
         'id_items',
         'no_transaksi',
+        'due_dates',
         'id_member'];
 
     protected $casts = [

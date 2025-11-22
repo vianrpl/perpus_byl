@@ -44,7 +44,7 @@
     </div>
     </div>
 
-
+    @unless(Auth::user()->role === 'konsumen')
     {{-- 🗑️ Tombol Hapus Terpilih --}}
     <form id="bulkDeleteForm"
           action="{{ route('bukus.items.bulkDelete', $buku->id_buku) }}"
@@ -53,15 +53,17 @@
         <button type="button" class="btn btn-danger btn-sm" id="bulkDeleteBtn" disabled>
             <i class="bi bi-trash me-1"></i> Hapus Terpilih
         </button>
-
+        @endunless
 
 
     {{-- Tabel daftar item --}}
     <div class="table table-responsive">
         <table class="table table-bordered table-striped fade-in">
             <thead class="table-dark">
-            <tr>
+            <tr class="text-center">
+                @unless(Auth::user()->role === 'konsumen')
                 <th><input type="checkbox" id="selectAll"></th>
+                @endunless
                 <th>ID</th>
                 <th>Kondisi</th>
                 <th>Status</th>
@@ -73,8 +75,10 @@
             </thead>
             <tbody>
             @forelse ($items as $item)
-                <tr>
+                <tr class="text-center">
+                    @unless(Auth::user()->role === 'konsumen')
                     <td><input type="checkbox" name="ids[]" class="rowCheckbox" value="{{ $item->id_item }}"></td>
+                    @endunless
                     <td>{{ ($items->currentPage() - 1) * $items->perPage() + $loop->iteration }}</td>
                     <td>{{ $item->kondisi }}</td>
                     <td>{{ $item->status }}</td>
@@ -110,7 +114,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="8" class="text-center">Belum ada item untuk buku ini</td>
+                    <td colspan="7" class="text-center">Belum ada item untuk buku ini</td>
                 </tr>
             @endforelse
             </tbody>

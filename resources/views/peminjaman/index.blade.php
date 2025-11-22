@@ -110,6 +110,12 @@
         </div>
     </div>
 
+    {{-- =====================================================
+    GANTI BAGIAN MODAL BUKU di resources/views/peminjaman/index.blade.php
+    Cari @foreach($peminjaman as $p) yang pertama untuk modal bukuModal
+    GANTI SELURUH MODAL BUKU DENGAN KODE INI
+===================================================== --}}
+
     @foreach($peminjaman as $p)
         <div class="modal fade" id="bukuModal{{ $p->id_peminjaman }}" tabindex="-1">
             <div class="modal-dialog modal-lg modal-dialog-centered">
@@ -132,38 +138,53 @@
                                 </tr>
                                 </thead>
                                 <tbody>
-                                @php
-                                    $idItems = json_decode($p->id_items, true) ?? [$p->id_item];
-                                    $items = \App\Models\buku_items::with('bukus')->whereIn('id_item', $idItems)->get();
-                                @endphp
-                                @foreach($items as $item)
-                                    <tr class="{{ $item->status == 'tersedia' ? 'table-success' : ($item->status == 'hilang' ? 'table-danger' : '') }}">
+                                @foreach($p->loan_items as $item)
+                                    @php
+                                        // Tentukan class row berdasarkan status DISPLAY
+                                        $rowClass = '';
+                                        if ($item->display_status === 'dikembalikan') {
+                                            $rowClass = 'table-success';
+                                        } elseif ($item->display_status === 'hilang') {
+                                            $rowClass = 'table-danger';
+                                        }
+
+                                        // Cek apakah item bisa dipilih
+                                        $canSelect = $item->display_status === 'dipinjam';
+
+                                        // Gunakan tanggal dari SNAPSHOT (loan_due_date)
+                                        $displayDate = $item->loan_due_date
+                                            ? \Carbon\Carbon::parse($item->loan_due_date)
+                                            : null;
+
+                                        // Cek telat hanya untuk yang masih dipinjam
+                                        $isPast = $displayDate && $displayDate->isPast() && $item->display_status === 'dipinjam';
+                                    @endphp
+                                    <tr class="{{ $rowClass }}">
                                         <td>
-                                            {{-- ✅ HANYA BISA PILIH YANG MASIH DIPINJAM --}}
-                                            @if(!in_array($item->status, ['tersedia', 'hilang']))
+                                            @if($canSelect)
                                                 <input type="checkbox" name="items[]" value="{{ $item->id_item }}">
                                             @endif
                                         </td>
                                         <td>{{ $item->bukus->judul }}</td>
                                         <td>{{ $item->barcode }}</td>
                                         <td>
-                                            @if($item->status == 'tersedia')
+                                            @if($item->display_status === 'dikembalikan')
                                                 <span class="badge bg-success">✓ Dikembalikan</span>
-                                            @elseif($item->status == 'hilang')
+                                            @elseif($item->display_status === 'hilang')
                                                 <span class="badge bg-danger">✗ Hilang</span>
                                             @else
                                                 <span class="badge bg-primary">Dipinjam</span>
                                             @endif
                                         </td>
                                         <td>
-                                            {{-- ✅ CEK APAKAH SUDAH DIPERPANJANG --}}
-                                            @if($item->extended_at)
+                                            {{-- Gunakan loan_extended_at dari SNAPSHOT --}}
+                                            @if($item->display_status !== 'dipinjam')
+                                                <span class="text-muted">-</span>
+                                            @elseif($item->loan_extended_at)
                                                 <span class="text-success">
                                                 <i class="fas fa-check-circle"></i>
-                                                Sudah ({{ \Carbon\Carbon::parse($item->extended_at)->format('d/m/Y') }})
+                                                Sudah ({{ \Carbon\Carbon::parse($item->loan_extended_at)->format('d/m/Y') }})
                                             </span>
-                                            @elseif($item->status == 'tersedia' || $item->status == 'hilang')
-                                                <span class="text-muted">-</span>
                                             @else
                                                 <span class="text-warning">
                                                 <i class="fas fa-clock"></i> Belum
@@ -171,28 +192,13 @@
                                             @endif
                                         </td>
                                         <td>
-                                            @php
-                                                // ✅ PRIORITAS: due_date dari item, fallback ke pengembalian
-                                                if ($item->due_date) {
-                                                    $displayDate = \Carbon\Carbon::parse($item->due_date);
-                                                } elseif ($p->pengembalian) {
-                                                    // ✅ CEK APAKAH $p->pengembalian ITU STRING ATAU OBJECT
-                                                    $displayDate = is_string($p->pengembalian)
-                                                        ? \Carbon\Carbon::parse($p->pengembalian)
-                                                        : $p->pengembalian;
-                                                } else {
-                                                    $displayDate = null;
-                                                }
-
-                                                $isPast = $displayDate && $displayDate->isPast() && !in_array($item->status, ['tersedia', 'hilang']);
-                                            @endphp
-
                                             @if($displayDate)
-                                                <span class="{{ $isPast ? 'text-danger fw-bold' : 'text-muted' }}">{{ $displayDate->format('d/m/Y') }}
+                                                <span class="{{ $isPast ? 'text-danger fw-bold' : 'text-muted' }}">
+                                                {{ $displayDate->format('d/m/Y') }}
                                                     @if($isPast)
                                                         <i class="fas fa-exclamation-triangle"></i> Telat!
                                                     @endif
-                                                </span>
+                                            </span>
                                             @else
                                                 <span class="text-muted">-</span>
                                             @endif
@@ -204,15 +210,25 @@
                         </form>
                     </div>
                     <div class="modal-footer">
-                        {{-- ✅ TOMBOL PERPANJANG: HANYA UNTUK YANG BELUM DIPERPANJANG & MASIH DIPINJAM --}}
-                        @if($items->where('extended_at', null)->whereNotIn('status', ['tersedia', 'hilang'])->count() > 0)
+                        @php
+                            $canExtend = $p->loan_items
+                                ->where('display_status', 'dipinjam')
+                                ->filter(function($item) {
+                                    return $item->loan_extended_at === null;
+                                })->count() > 0;
+
+                            $canReturn = $p->loan_items
+                                ->where('display_status', 'dipinjam')
+                                ->count() > 0;
+                        @endphp
+
+                        @if($canExtend)
                             <button class="btn btn-warning" onclick="bulkAction('perpanjang', '{{ $p->id_peminjaman }}')">
                                 <i class="fas fa-calendar-plus"></i> Perpanjang Terpilih
                             </button>
                         @endif
 
-                        {{-- ✅ TOMBOL KEMBALIKAN: HANYA UNTUK YANG MASIH DIPINJAM --}}
-                        @if($items->whereNotIn('status', ['tersedia', 'hilang'])->count() > 0)
+                        @if($canReturn)
                             <button class="btn btn-success" onclick="bulkAction('kembalikan', '{{ $p->id_peminjaman }}')">
                                 <i class="fas fa-check-circle"></i> Kembalikan Terpilih
                             </button>

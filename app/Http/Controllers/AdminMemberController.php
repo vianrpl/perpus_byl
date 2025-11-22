@@ -173,4 +173,15 @@ class AdminMemberController extends Controller
 
         return back()->with('success', 'Kode verifikasi dikirim ke ' . $user->email);
     }
+
+    public function index()
+    {
+        $profiles = MemberProfile::with('user')
+            ->where('request_status', 'pending')
+            ->orWhereNull('request_status')
+            ->orderBy('created_at', 'desc')
+            ->paginate(10);
+
+        return view('admin.member_requests', compact('profiles'));
+    }
 }

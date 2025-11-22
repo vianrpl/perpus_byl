@@ -1,162 +1,452 @@
-/* public/css/custom.css */
+/* =====================================================
+   FILE: public/css/custom.css
+   GLOBAL STYLES - KONSISTEN UNTUK SEMUA HALAMAN
+   ===================================================== */
 
-/* --- Hover efek baris tabel --- */
-.table tbody tr {
-    transition: background-color 0.3s ease, transform 0.18s ease, box-shadow 0.18s ease;
-    transform-origin: left center;
-}
-.table tbody tr:hover {
-    background-color: #f8f9fa; /* lembut, tetap cocok dengan Bootstrap */
-    transform: translateY(-2px) scale(1.002);
-    box-shadow: 0 6px 18px rgba(0,0,0,0.04);
+/* ===== ROOT VARIABLES ===== */
+:root {
+    --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --success-gradient: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    --danger-gradient: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+    --warning-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    --info-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+
+    --primary-color: #667eea;
+    --primary-dark: #764ba2;
+
+    --border-radius-sm: 8px;
+    --border-radius-md: 12px;
+    --border-radius-lg: 16px;
+    --border-radius-pill: 50px;
+
+    --shadow-sm: 0 2px 8px rgba(0,0,0,0.08);
+    --shadow-md: 0 4px 16px rgba(0,0,0,0.12);
+    --shadow-lg: 0 8px 32px rgba(0,0,0,0.15);
+
+    --transition-fast: 0.2s ease;
+    --transition-normal: 0.3s ease;
 }
 
-/* --- Tombol (semua .btn) animasi scale & shadow --- */
+/* ===== TOMBOL - KONSISTEN SEMUA ===== */
 .btn {
-    transition: transform 0.18s ease, box-shadow 0.18s ease;
-    will-change: transform;
+    border-radius: var(--border-radius-sm);
+    font-weight: 500;
+    transition: all var(--transition-normal);
+    border: none;
+    padding: 0.5rem 1rem;
 }
+
 .btn:hover {
-    transform: translateY(-2px) scale(1.05);
-    box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
 }
 
-/* --- Khusus tombol utama (Tambah Buku) : subtle pulse on hover --- */
-.hover-scale {
-    transition: transform 0.22s cubic-bezier(.2,.9,.2,1), box-shadow 0.22s;
-}
-.hover-scale:hover {
-    transform: translateY(-3px) scale(1.08);
-    box-shadow: 0 10px 22px rgba(0,0,0,0.12);
+.btn:active {
+    transform: translateY(0);
 }
 
-/* --- Fade-in container / tabel --- */
-.fade-in {
-    opacity: 0;
-    transform: translateY(8px);
-    animation: fadeInUp 0.5s ease forwards;
-}
-@keyframes fadeInUp {
-    to { opacity: 1; transform: translateY(0); }
+/* Primary Button */
+.btn-primary {
+    background: var(--primary-gradient);
+    color: white;
 }
 
-/* --- Staggered row animation (applied by JS) --- */
-.row-appear {
-    opacity: 0;
-    transform: translateY(6px);
-    animation: rowFadeUp 0.42s ease forwards;
-}
-@keyframes rowFadeUp {
-    to { opacity: 1; transform: translateY(0); }
+.btn-primary:hover {
+    background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
 }
 
-/* --- Optional small style for action buttons spacing --- */
-.table .btn {
-    margin-right: 6px;
+/* Success Button */
+.btn-success {
+    background: var(--success-gradient);
+    color: white;
 }
 
-/* Semua link sidebar tetap putih */
-.nav-link,
-.nav-link.dropdown-toggle {
-    color: #fff !important;
+.btn-success:hover {
+    box-shadow: 0 6px 20px rgba(17, 153, 142, 0.4);
 }
 
-/* Hover efek abu-abu lembut */
-.nav-link:hover,
-.nav-link.dropdown-toggle:hover {
-    color: #fff !important;
-    background-color: #495057 !important;
-    border-radius: 6px;
+/* Danger Button */
+.btn-danger {
+    background: var(--danger-gradient);
+    color: white;
 }
 
-.navbar .badge {
-    font-size: 0.7rem;
-    padding: 4px 8px;
-    border-radius: 8px;
+.btn-danger:hover {
+    box-shadow: 0 6px 20px rgba(235, 51, 73, 0.4);
 }
 
-/* Dropdown item tetap putih */
-.dropdown-menu.bg-dark .dropdown-item {
-    color: #fff !important;
+/* Warning Button */
+.btn-warning {
+    background: var(--warning-gradient);
+    color: white;
 }
 
-/* Dropdown hover abu-abu */
-.dropdown-menu.bg-dark .dropdown-item:hover {
-    background-color: #495057 !important;
-    border-radius: 6px;
+.btn-warning:hover {
+    box-shadow: 0 6px 20px rgba(240, 147, 251, 0.4);
 }
 
-/* --- Modal: cukup atur z-index aja, biar gak ketelen --- */
-.modal {
-    z-index: 1055 !important;
-}
-.modal-backdrop {
-    z-index: 1050 !important;
+/* Info Button */
+.btn-info {
+    background: var(--info-gradient);
+    color: white;
 }
 
-/* Style untuk card dashboard */
-.dashboard-card {
-    transition: transform 0.2s, box-shadow 0.3s;
-    border-radius: 15px;
-}
-.dashboard-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+.btn-info:hover {
+    box-shadow: 0 6px 20px rgba(79, 172, 254, 0.4);
 }
 
-/* About Section */
-.about-section {
-    background: #ffffff;
-    border-left: 5px solid #0d6efd;
-    transition: background 0.3s, color 0.3s;
+/* Secondary & Dark Button */
+.btn-secondary {
+    background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+    color: white;
 }
 
-/* Dark Mode Adaptif */
-body.dark-mode .dashboard-card {
-    background-color: #2a2a3c;
-    color: #f1f1f1;
-}
-body.dark-mode .about-section {
-    background-color: #2a2a3c;
-    border-left: 5px solid #0dcaf0;
-    color: #f1f1f1;
-}
-/* Styling untuk judul menu di sidebar */
-.menu-title {
-    color: #ffffff;          /* Bikin teks putih */
-    font-weight: 600;        /* Tebelin biar mirip heading */
-    font-size: 0.85rem;      /* Ukuran agak kecil */
-    text-transform: uppercase; /* Huruf kapital semua */
-    padding: 5px 5px 5px;  /* Spasi biar rapi */
-    letter-spacing: 1px;     /* Jarak antar huruf */
-    opacity: 0.8;            /* Biar agak soft putihnya */
-
-
+.btn-dark {
+    background: linear-gradient(135deg, #343a40 0%, #212529 100%);
+    color: white;
 }
 
-/* Paksa hilang scroll vertikal */
-html, body {
-    height: 100vh;        /* layar fix 1 halaman */
-    overflow-y: hidden !important; /* jangan kasih scroll vertikal */
-    margin: 0;
-    padding: 0;
+/* Outline Buttons */
+.btn-outline-primary {
+    border: 2px solid var(--primary-color);
+    color: var(--primary-color);
+    background: transparent;
 }
 
-/* Bungkus tabel biar gak bikin scroll tambahan */
-.table-responsive,
-.dataTables_wrapper {
-    max-height: 100%;  /* biar gak lebih dari layar */
-    overflow-y: hidden !important;
+.btn-outline-primary:hover {
+    background: var(--primary-gradient);
+    color: white;
+    border-color: transparent;
 }
 
-/* Hilangkan margin bawah pagination yang suka bikin scroll */
-.pagination,
-.dataTables_paginate,
-.d-flex.justify-content-center {
-    margin-bottom: 0 !important;
-    padding-bottom: 0 !important;
+.btn-outline-secondary {
+    border: 2px solid #6c757d;
+    color: #6c757d;
+    background: transparent;
 }
 
-.btn-outline-secondary i {
+.btn-outline-secondary:hover {
+    background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+    color: white;
+    border-color: transparent;
+}
+
+/* Button Sizes */
+.btn-sm {
+    padding: 0.35rem 0.75rem;
+    font-size: 0.85rem;
+}
+
+.btn-lg {
+    padding: 0.75rem 1.5rem;
     font-size: 1.1rem;
+}
+
+/* ===== MODAL - KONSISTEN SEMUA ===== */
+.modal-content {
+    border: none;
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+}
+
+.modal-header {
+    border-bottom: none;
+    padding: 1.25rem 1.5rem;
+}
+
+.modal-header.bg-primary {
+    background: var(--primary-gradient) !important;
+}
+
+.modal-header.bg-success {
+    background: var(--success-gradient) !important;
+}
+
+.modal-header.bg-danger {
+    background: var(--danger-gradient) !important;
+}
+
+.modal-header.bg-warning {
+    background: var(--warning-gradient) !important;
+}
+
+.modal-header.bg-info {
+    background: var(--info-gradient) !important;
+}
+
+.modal-title {
+    font-weight: 600;
+}
+
+.modal-body {
+    padding: 1.5rem;
+}
+
+.modal-footer {
+    border-top: 1px solid rgba(0,0,0,0.05);
+    padding: 1rem 1.5rem;
+    background: #f8f9fa;
+}
+
+/* ===== FORM INPUTS ===== */
+.form-control, .form-select {
+    border-radius: var(--border-radius-sm);
+    border: 2px solid #e9ecef;
+    padding: 0.6rem 1rem;
+    transition: all var(--transition-fast);
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+}
+
+.form-label {
+    font-weight: 500;
+    color: #495057;
+    margin-bottom: 0.4rem;
+}
+
+/* ===== TABLE ===== */
+.table {
+    border-radius: var(--border-radius-md);
+    overflow: hidden;
+}
+
+.table thead th {
+    background: var(--primary-gradient);
+    color: white;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    letter-spacing: 0.5px;
+    border: none;
+    padding: 1rem;
+}
+
+.table-dark thead th {
+    background: var(--primary-gradient) !important;
+}
+
+.table tbody tr {
+    transition: all var(--transition-fast);
+}
+
+.table tbody tr:hover {
+    background-color: rgba(102, 126, 234, 0.05);
+}
+
+.table tbody td {
+    padding: 0.875rem 1rem;
+    vertical-align: middle;
+}
+
+/* ===== BADGES ===== */
+.badge {
+    padding: 0.4em 0.8em;
+    font-weight: 500;
+    border-radius: var(--border-radius-pill);
+}
+
+.badge.bg-primary {
+    background: var(--primary-gradient) !important;
+}
+
+.badge.bg-success {
+    background: var(--success-gradient) !important;
+}
+
+.badge.bg-danger {
+    background: var(--danger-gradient) !important;
+}
+
+.badge.bg-warning {
+    background: var(--warning-gradient) !important;
+    color: white !important;
+}
+
+.badge.bg-info {
+    background: var(--info-gradient) !important;
+}
+
+/* ===== CARDS ===== */
+.card {
+    border: none;
+    border-radius: var(--border-radius-md);
+    box-shadow: var(--shadow-sm);
+    transition: all var(--transition-normal);
+}
+
+.card:hover {
+    box-shadow: var(--shadow-md);
+}
+
+/* ===== ALERTS ===== */
+.alert {
+    border: none;
+    border-radius: var(--border-radius-md);
+    padding: 1rem 1.25rem;
+}
+
+.alert-success {
+    background: linear-gradient(135deg, rgba(17, 153, 142, 0.15) 0%, rgba(56, 239, 125, 0.15) 100%);
+    color: #0f766e;
+}
+
+.alert-danger {
+    background: linear-gradient(135deg, rgba(235, 51, 73, 0.15) 0%, rgba(244, 92, 67, 0.15) 100%);
+    color: #dc2626;
+}
+
+.alert-warning {
+    background: linear-gradient(135deg, rgba(240, 147, 251, 0.15) 0%, rgba(245, 87, 108, 0.15) 100%);
+    color: #92400e;
+}
+
+.alert-info {
+    background: linear-gradient(135deg, rgba(79, 172, 254, 0.15) 0%, rgba(0, 242, 254, 0.15) 100%);
+    color: #0369a1;
+}
+
+/* ===== PAGINATION ===== */
+.pagination {
+    gap: 0.25rem;
+}
+
+.page-link {
+    border: none;
+    border-radius: var(--border-radius-sm) !important;
+    padding: 0.5rem 0.875rem;
+    color: var(--primary-color);
+    transition: all var(--transition-fast);
+}
+
+.page-link:hover {
+    background: var(--primary-gradient);
+    color: white;
+}
+
+.page-item.active .page-link {
+    background: var(--primary-gradient);
+    border: none;
+}
+
+/* ===== DROPDOWN ===== */
+.dropdown-menu {
+    border: none;
+    border-radius: var(--border-radius-md);
+    box-shadow: var(--shadow-lg);
+    padding: 0.5rem;
+}
+
+.dropdown-item {
+    border-radius: var(--border-radius-sm);
+    padding: 0.6rem 1rem;
+    transition: all var(--transition-fast);
+}
+
+.dropdown-item:hover {
+    background: var(--primary-gradient);
+    color: white;
+}
+
+.dropdown-item:hover i {
+    color: white !important;
+}
+
+/* ===== SIDEBAR ===== */
+.main-sidebar {
+    background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%) !important;
+}
+
+.nav-sidebar .nav-link {
+    border-radius: var(--border-radius-sm);
+    margin: 0.15rem 0.5rem;
+    transition: all var(--transition-fast);
+}
+
+.nav-sidebar .nav-link:hover {
+    background: rgba(255,255,255,0.1);
+}
+
+.nav-sidebar .nav-link.active {
+    background: var(--primary-gradient) !important;
+}
+
+.menu-title {
+    color: rgba(255,255,255,0.5);
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    padding: 1rem 1rem 0.5rem;
+    letter-spacing: 1px;
+}
+
+/* ===== NAVBAR TOP ===== */
+.main-header.navbar {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%) !important;
+    border: none;
+}
+
+/* ===== FOOTER ===== */
+.main-footer {
+    background: #fff;
+    border-top: 1px solid rgba(0,0,0,0.05);
+    padding: 1rem;
+}
+
+/* ===== ANIMATIONS ===== */
+.fade-in {
+    animation: fadeIn 0.5s ease forwards;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ===== SCROLLBAR ===== */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--primary-color);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-dark);
+}
+
+/* ===== TABLE RESPONSIVE ===== */
+.table-responsive {
+    border-radius: var(--border-radius-md);
+    overflow: hidden;
+}
+
+/* ===== SEARCH BOX MODERN ===== */
+.search-modern {
+    border-radius: var(--border-radius-pill);
+    border: 2px solid #e9ecef;
+    overflow: hidden;
+    background: white;
+}
+
+.search-modern .form-control {
+    border: none;
+    box-shadow: none;
+}
+
+.search-modern:focus-within {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
 }

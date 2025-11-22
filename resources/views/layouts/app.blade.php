@@ -14,6 +14,8 @@
 
     <!-- Custom CSS (optional) -->
     <link rel="stylesheet" href="{{ asset('css/custom.css') }}">
+    <!-- Design System CSS -->
+    <link rel="stylesheet" href="{{ asset('css/design-system.css') }}">
     <style>
         /* ===========================================
            MODAL PINJAM BUKU - MODERN & ATTRACTIVE

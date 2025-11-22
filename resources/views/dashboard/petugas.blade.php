@@ -1,37 +1,60 @@
+{{-- FILE: resources/views/dashboard/petugas.blade.php --}}
+
 @extends('layouts.app')
 
 @section('content')
-    <div class="container">
-        <h1 class="mb-4 fw-bold text-center">Dashboard Petugas</h1>
-        <p class="text-center text-muted">Halo, {{ Auth::user()->name }}</p>
+    <div class="dashboard-wrapper">
+        {{-- Background dengan pattern buku --}}
+        <div class="dashboard-bg"></div>
 
-        {{-- Navbar kecil khusus dashboard --}}
-        @if(Request::is('dashboard*'))
-            <nav class="navbar navbar-expand-lg shadow-sm mb-4 rounded bg-white">
+        <div class="container position-relative">
+            {{-- Header Section --}}
+            <div class="dashboard-header text-center mb-4">
+                <h1 class="fw-bold text-white mb-2">
+                    <i class="fas fa-user-tie me-2"></i>Dashboard Petugas
+                </h1>
+                <p class="text-white-50 mb-0">Selamat datang, {{ Auth::user()->name }}</p>
+            </div>
+
+            {{-- Navbar Dashboard dengan DateTime --}}
+            <nav class="navbar navbar-expand-lg dashboard-navbar shadow mb-4 rounded-3">
                 <div class="container-fluid">
-                    <span class="navbar-brand fw-bold">📖 Perpus Mbolali</span>
+                <span class="navbar-brand fw-bold">
+                    <i class="fas fa-book-open text-primary me-2"></i>
+                    Perpus Mbolali
+                </span>
+
+                    {{-- DateTime Display --}}
+                    <div class="datetime-display d-none d-md-flex align-items-center me-3">
+                        <i class="fas fa-calendar-alt text-primary me-2"></i>
+                        <span id="currentDateTime" class="text-muted fw-medium"></span>
+                    </div>
 
                     <div class="dropdown ms-auto">
-                        <a class="btn btn-outline-secondary dropdown-toggle" href="#" role="button"
-                           data-bs-toggle="dropdown" aria-expanded="false">
-                            <img src="{{ Auth::user()->photo ? asset('storage/' . Auth::user()->photo) : 'https://ui-avatars.com/api/?name=' . Auth::user()->name . '&background=random' }}"
-                                 alt="Foto Profil"
-                                 class="rounded-circle me-2"
-                                 width="32" height="32">
-                            {{ Auth::user()->name }}
+                        <a class="btn btn-outline-secondary dropdown-toggle d-flex align-items-center" href="#"
+                           role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <img src="{{ Auth::user()->photo ? asset('storage/' . Auth::user()->photo) : 'https://ui-avatars.com/api/?name=' . urlencode(Auth::user()->name) . '&background=11998e&color=fff' }}"
+                                 alt="Foto Profil" class="rounded-circle me-2" width="32" height="32">
+                            <span class="d-none d-sm-inline">{{ Auth::user()->name }}</span>
+                            <span class="badge bg-success ms-2 text-capitalize">{{ Auth::user()->role }}</span>
                         </a>
 
-                        <ul class="dropdown-menu dropdown-menu-end">
-                            <li><span class="dropdown-item-text">Role: {{ Auth::user()->role }}</span></li>
+                        <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0">
+                            <li class="dropdown-header">
+                                <small class="text-muted">Role: {{ ucfirst(Auth::user()->role) }}</small>
+                            </li>
                             <li><hr class="dropdown-divider"></li>
                             <li>
                                 <a href="{{ route('profile.edit') }}" class="dropdown-item">
-                                    Edit Profil
+                                    <i class="fas fa-user-edit me-2 text-primary"></i> Edit Profil
                                 </a>
-                                <form action="{{ route('logout') }}" method="POST" class="d-inline">
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <form action="{{ route('logout') }}" method="POST">
                                     @csrf
                                     <button type="submit" class="dropdown-item text-danger">
-                                        <i class="bi bi-box-arrow-right"></i> Logout
+                                        <i class="fas fa-sign-out-alt me-2"></i> Logout
                                     </button>
                                 </form>
                             </li>
@@ -39,168 +62,163 @@
                     </div>
                 </div>
             </nav>
-        @endif
 
-        {{-- Card Menu --}}
-        <div class="row">
-            {{-- Daftar Buku --}}
-            <div class="col-lg-4 col-md-6 col-12">
-                <div class="small-box bg-primary">
-                    <div class="inner">
-                        <h4>Lihat Daftar Buku</h4>
-                        <p>Semua koleksi buku tersedia</p>
+            {{-- Cards Row dengan gap (g-4 = 24px jarak) --}}
+            <div class="row g-4 mb-5 justify-content-center">
+                {{-- Daftar Buku --}}
+                <div class="col-lg-4 col-md-6">
+                    <div class="dashboard-card card-gradient-primary h-100">
+                        <div class="card-body d-flex flex-column">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <div>
+                                    <h5 class="card-title fw-bold mb-1">Daftar Buku</h5>
+                                    <p class="card-text text-white-50 small mb-0">Semua koleksi buku tersedia</p>
+                                </div>
+                                <div class="card-icon">
+                                    <i class="fas fa-book"></i>
+                                </div>
+                            </div>
+                            <div class="mt-auto">
+                                <a href="{{ route('bukus.index') }}" class="btn btn-light btn-sm rounded-pill">
+                                    Lihat <i class="fas fa-arrow-right ms-1"></i>
+                                </a>
+                            </div>
+                        </div>
                     </div>
-                    <div class="icon">
-                        <i class="fas fa-book"></i>
+                </div>
+
+                {{-- Rak --}}
+                <div class="col-lg-4 col-md-6">
+                    <div class="dashboard-card card-gradient-success h-100">
+                        <div class="card-body d-flex flex-column">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <div>
+                                    <h5 class="card-title fw-bold mb-1">Rak</h5>
+                                    <p class="card-text text-white-50 small mb-0">Daftar rak penyimpanan buku</p>
+                                </div>
+                                <div class="card-icon">
+                                    <i class="fas fa-archive"></i>
+                                </div>
+                            </div>
+                            <div class="mt-auto">
+                                <a href="{{ route('raks.index') }}" class="btn btn-light btn-sm rounded-pill">
+                                    Lihat <i class="fas fa-arrow-right ms-1"></i>
+                                </a>
+                            </div>
+                        </div>
                     </div>
-                    <a href="{{ route('bukus.index') }}" class="small-box-footer">
-                        Lihat <i class="fas fa-arrow-circle-right"></i>
-                    </a>
+                </div>
+
+                {{-- Lokasi Rak --}}
+                <div class="col-lg-4 col-md-6">
+                    <div class="dashboard-card card-gradient-danger h-100">
+                        <div class="card-body d-flex flex-column">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <div>
+                                    <h5 class="card-title fw-bold mb-1">Lokasi Rak</h5>
+                                    <p class="card-text text-white-50 small mb-0">Lokasi tiap rak buku</p>
+                                </div>
+                                <div class="card-icon">
+                                    <i class="fas fa-map-marker-alt"></i>
+                                </div>
+                            </div>
+                            <div class="mt-auto">
+                                <a href="{{ route('lokasi_raks.index') }}" class="btn btn-light btn-sm rounded-pill">
+                                    Lihat <i class="fas fa-arrow-right ms-1"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Penerbit --}}
+                <div class="col-lg-4 col-md-6">
+                    <div class="dashboard-card card-gradient-warning h-100">
+                        <div class="card-body d-flex flex-column">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <div>
+                                    <h5 class="card-title fw-bold mb-1">Penerbit</h5>
+                                    <p class="card-text text-white-50 small mb-0">Daftar penerbit buku</p>
+                                </div>
+                                <div class="card-icon">
+                                    <i class="fas fa-building"></i>
+                                </div>
+                            </div>
+                            <div class="mt-auto">
+                                <a href="{{ route('penerbits.index') }}" class="btn btn-light btn-sm rounded-pill">
+                                    Lihat <i class="fas fa-arrow-right ms-1"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Kategori --}}
+                <div class="col-lg-4 col-md-6">
+                    <div class="dashboard-card card-gradient-info h-100">
+                        <div class="card-body d-flex flex-column">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <div>
+                                    <h5 class="card-title fw-bold mb-1">Kategori</h5>
+                                    <p class="card-text text-white-50 small mb-0">Kategori utama koleksi buku</p>
+                                </div>
+                                <div class="card-icon">
+                                    <i class="fas fa-tags"></i>
+                                </div>
+                            </div>
+                            <div class="mt-auto">
+                                <a href="{{ route('kategoris.index') }}" class="btn btn-light btn-sm rounded-pill">
+                                    Lihat <i class="fas fa-arrow-right ms-1"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Sub Kategori --}}
+                <div class="col-lg-4 col-md-6">
+                    <div class="dashboard-card card-gradient-secondary h-100">
+                        <div class="card-body d-flex flex-column">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <div>
+                                    <h5 class="card-title fw-bold mb-1">Sub Kategori</h5>
+                                    <p class="card-text text-white-50 small mb-0">Detail sub kategori buku</p>
+                                </div>
+                                <div class="card-icon">
+                                    <i class="fas fa-list"></i>
+                                </div>
+                            </div>
+                            <div class="mt-auto">
+                                <a href="{{ route('sub_kategoris.index') }}" class="btn btn-light btn-sm rounded-pill">
+                                    Lihat <i class="fas fa-arrow-right ms-1"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            {{-- Rak --}}
-            <div class="col-lg-4 col-md-6 col-12">
-                <div class="small-box bg-success">
-                    <div class="inner">
-                        <h4>Rak</h4>
-                        <p>Daftar rak penyimpanan buku</p>
+            {{-- About Section --}}
+            <div class="about-section-new rounded-4 shadow-lg p-4 mb-4">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h4 class="fw-bold mb-3">
+                            <i class="fas fa-info-circle text-primary me-2"></i>Tentang Kami
+                        </h4>
+                        <p class="text-muted mb-0">
+                            Perpus Mbolali adalah aplikasi perpustakaan digital yang dibuat untuk memudahkan siapa saja
+                            dalam mencari, melihat, dan mengenal koleksi buku. Dengan tampilan yang simpel dan mudah dipakai,
+                            aplikasi ini diharapkan bisa bikin baca buku jadi lebih seru dan nggak ribet.
+                        </p>
                     </div>
-                    <div class="icon">
-                        <i class="fas fa-archive"></i>
+                    <div class="col-md-4 text-center d-none d-md-block">
+                        <i class="fas fa-book-reader text-primary" style="font-size: 5rem; opacity: 0.3;"></i>
                     </div>
-                    <a href="{{ route('raks.index') }}" class="small-box-footer">
-                        Lihat <i class="fas fa-arrow-circle-right"></i>
-                    </a>
                 </div>
             </div>
-
-            {{-- Lokasi Rak --}}
-            <div class="col-lg-4 col-md-6 col-12">
-                <div class="small-box bg-danger">
-                    <div class="inner">
-                        <h4>Lokasi Rak</h4>
-                        <p>Lokasi tiap rak buku</p>
-                    </div>
-                    <div class="icon">
-                        <i class="fas fa-map-marker-alt"></i>
-                    </div>
-                    <a href="{{ route('lokasi_raks.index') }}" class="small-box-footer">
-                        Lihat <i class="fas fa-arrow-circle-right"></i>
-                    </a>
-                </div>
-            </div>
-
-            {{-- Penerbit --}}
-            <div class="col-lg-4 col-md-6 col-12">
-                <div class="small-box bg-warning text-white">
-                    <div class="inner">
-                        <h4>Penerbit</h4>
-                        <p>Daftar penerbit buku</p>
-                    </div>
-                    <div class="icon">
-                        <i class="fas fa-building"></i>
-                    </div>
-                    <a href="{{ route('penerbits.index') }}" class="small-box-footer text-white">
-                        Lihat <i class="fas fa-arrow-circle-right"></i>
-                    </a>
-                </div>
-            </div>
-
-            {{-- Kategori --}}
-            <div class="col-lg-4 col-md-6 col-12">
-                <div class="small-box bg-info">
-                    <div class="inner">
-                        <h4>Kategori</h4>
-                        <p>Kategori utama koleksi buku</p>
-                    </div>
-                    <div class="icon">
-                        <i class="fas fa-tags"></i>
-                    </div>
-                    <a href="{{ route('kategoris.index') }}" class="small-box-footer">
-                        Lihat <i class="fas fa-arrow-circle-right"></i>
-                    </a>
-                </div>
-            </div>
-
-            {{-- Sub Kategori --}}
-            <div class="col-lg-4 col-md-6 col-12">
-                <div class="small-box bg-secondary">
-                    <div class="inner">
-                        <h4>Sub Kategori</h4>
-                        <p>Detail sub kategori buku</p>
-                    </div>
-                    <div class="icon">
-                        <i class="fas fa-list"></i>
-                    </div>
-                    <a href="{{ route('sub_kategoris.index') }}" class="small-box-footer">
-                        Lihat <i class="fas fa-arrow-circle-right"></i>
-                    </a>
-                </div>
-            </div>
-        </div>
-
-        {{-- About Section --}}
-        <div class="about-section mt-5 p-4 rounded shadow-sm">
-            <h4 class="fw-bold">Tentang Kami</h4>
-            <p class="text-muted">
-                Perpus Mbolali adalah aplikasi perpustakaan digital yang dibuat untuk memudahkan siapa saja dalam mencari, melihat, dan mengenal koleksi buku.
-                Dengan tampilan yang simpel dan mudah dipakai, aplikasi ini diharapkan bisa bikin baca buku jadi lebih seru dan nggak ribet.
-            </p>
         </div>
     </div>
 
-    {{-- Custom CSS --}}
-    <style>
-        body {
-            background-color: #f4f6f9; /* abu muda, lembut */
-            color: #333;
-        }
-
-        .navbar {
-            background-color: #ffffff !important;
-            border-bottom: 1px solid #ddd;
-        }
-
-        .card.dashboard-card {
-            background-color: #ffffff;
-            color: #333;
-            border: none;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-            transition: all 0.3s ease-in-out;
-        }
-
-        .card.dashboard-card:hover {
-            transform: translateY(-6px) scale(1.02);
-            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
-        }
-
-        .about-section {
-            background-color: #ffffff;
-            color: #333;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-        }
-
-        /* Biar semua small-box teksnya putih */
-        .small-box,
-        .small-box .inner,
-        .small-box .icon,
-        .small-box .small-box-footer {
-            color: #fff !important;
-        }
-
-        /* Hover efek untuk semua small-box */
-        .small-box {
-            transition: all 0.3s ease-in-out;
-            border-radius: 12px; /* biar halus */
-        }
-
-        .small-box:hover {
-            transform: translateY(-6px) scale(1.02);
-            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
-            filter: brightness(1.1); /* warna jadi lebih terang saat hover */
-        }
-    </style>
+    {{-- Include Styles & Script dari Partial --}}
+    @include('dashboard.partials.dashboard-styles')
 @endsection
