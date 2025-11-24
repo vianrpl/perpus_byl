@@ -104,9 +104,9 @@
                             <button class="btn btn-sm btn-warning"
                                     data-bs-toggle="modal"
                                     data-bs-target="#modalEditPenataan{{ $penataan->id_penataan }}">Edit</button>
-                            <button type="button" class="btn btn-sm btn-danger"
+                            <!-- <button type="button" class="btn btn-sm btn-danger"
                                     data-bs-toggle="modal"
-                                    data-bs-target="#modalHapus{{ $penataan->id_penataan }}">Hapus</button>
+                                    data-bs-target="#modalHapus{{ $penataan->id_penataan }}">Hapus</button> -->
                         @endunless
                     </td>
                 </tr>

@@ -4,16 +4,16 @@
     <div class="table table-responsive">
         <h2>Daftar Peminjaman</h2>
 
-        {{-- Form Search --}}
+        {{-- Form Search - UPDATED: bisa search judul buku & barcode --}}
         <form action="{{ route('peminjaman.index') }}" method="GET" class="mb-3">
-            <div class="input-group" style="max-width:400px">
-                <input type="text" name="search" class="form-control" placeholder="Cari Data Peminjam "
+            <div class="input-group" style="max-width:500px">
+                <input type="text" name="search" class="form-control"
+                       placeholder="Cari nama, no transaksi, judul buku, atau barcode..."
                        value="{{ request('search') }}">
                 <button class="btn btn-dark" type="submit">Cari</button>
                 @if(request('search'))
-                    <a href="{{ route('peminjaman.index') }}" class="btn btn-dark">Reset</a>
+                    <a href="{{ route('peminjaman.index') }}" class="btn btn-secondary">Reset</a>
                 @endif
-
                 <button type="button" id="openPinjamBtn" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#pinjamModal">
                     <i class="fas fa-plus"></i> Pinjam Buku
                 </button>
@@ -34,12 +34,13 @@
             </div>
         @endif
 
+        {{-- TABLE UTAMA - UPDATED: Kolom diubah sesuai request --}}
         <table class="table table-modern table-bordered table-striped fade-in">
             <thead class="table-dark">
             <tr class="text-center">
                 <th>ID</th>
-                <th>User</th>
-                <th>No_Transaksi</th>
+                <th>No Transaksi</th>
+                <th>Nama Peminjam</th> {{-- CHANGED: dari User jadi Nama Peminjam --}}
                 <th>Buku</th>
                 <th>Batas Pengembalian</th>
                 <th>Status</th>
@@ -50,11 +51,12 @@
             @forelse($peminjaman as $p)
                 <tr class="text-center">
                     <td>{{ ($peminjaman->currentPage() - 1) * $peminjaman->perPage() + $loop->iteration }}</td>
-                    <td>{{ $p->user->name }}</td>
                     <td>{{ $p->no_transaksi }}</td>
+                    <td>{{ $p->nama_peminjam }}</td> {{-- CHANGED: tampilkan nama_peminjam --}}
                     <td>
-                        <button class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#bukuModal{{ $p->id_peminjaman }}">
-                            Lihat Buku
+                        {{-- UPDATED: Tombol Lihat Buku warna berbeda (secondary/abu-abu) --}}
+                        <button class="btn btn-sm btn-secondary" data-bs-toggle="modal" data-bs-target="#bukuModal{{ $p->id_peminjaman }}">
+                            <i class="fas fa-book"></i> Lihat Buku
                         </button>
                     </td>
                     <td class="{{ \Carbon\Carbon::parse($p->pengembalian)->isPast() ? 'text-danger' : 'text-success' }}">
@@ -88,15 +90,40 @@
                         @endif
                     </td>
                     <td>
+                        {{-- UPDATED: Tombol Aksi dipisah --}}
+                        {{-- Tombol Lihat Detail (warna info/biru muda) --}}
                         <button type="button" class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#detailModal{{ $p->id_peminjaman }}">
                             <i class="fas fa-eye"></i> Lihat
                         </button>
 
-                        @if($p->status === 'kembali')
+                        {{-- UPDATED: Tombol Perpanjang dipindah ke sini (warna warning/kuning) --}}
+                        @php
+                            $canExtend = $p->loan_items
+                                ->where('display_status', 'dipinjam')
+                                ->filter(fn($item) => $item->loan_extended_at === null)->count() > 0;
+                            $canReturn = $p->loan_items->where('display_status', 'dipinjam')->count() > 0;
+                        @endphp
+
+                        @if($canExtend)
+                            <button type="button" class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#perpanjangModal{{ $p->id_peminjaman }}">
+                                <i class="fas fa-calendar-plus"></i> Perpanjang
+                            </button>
+                        @endif
+
+                        {{-- UPDATED: Tombol Kembalikan dipindah ke sini (warna success/hijau) --}}
+                        @if($canReturn)
+                            <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#kembalikanModal{{ $p->id_peminjaman }}">
+                                <i class="fas fa-undo"></i> Kembalikan
+                            </button>
+                        @endif
+
+                        {{-- Tombol Hapus (warna danger/merah) --}}
+                        {{-- }}@if($p->status === 'kembali')
                             <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#hapusModal{{ $p->id_peminjaman }}">
                                 <i class="fas fa-trash-alt"></i> Hapus
                             </button>
-                        @endif
+                        @endif --}}
+                        
                     </td>
                 </tr>
             @empty
@@ -111,129 +138,77 @@
     </div>
 
     {{-- =====================================================
-    GANTI BAGIAN MODAL BUKU di resources/views/peminjaman/index.blade.php
-    Cari @foreach($peminjaman as $p) yang pertama untuk modal bukuModal
-    GANTI SELURUH MODAL BUKU DENGAN KODE INI
-===================================================== --}}
-
+        MODAL LIHAT BUKU - HANYA NAMPILIN BUKU (TANPA TOMBOL AKSI)
+    ===================================================== --}}
     @foreach($peminjaman as $p)
         <div class="modal fade" id="bukuModal{{ $p->id_peminjaman }}" tabindex="-1">
             <div class="modal-dialog modal-lg modal-dialog-centered">
                 <div class="modal-content">
-                    <div class="modal-header bg-primary text-white">
-                        <h5 class="modal-title">Buku Dipinjam #{{ $p->no_transaksi }}</h5>
+                    <div class="modal-header bg-secondary text-white">
+                        <h5 class="modal-title"><i class="fas fa-book me-2"></i>Buku Dipinjam #{{ $p->no_transaksi }}</h5>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
-                        <form id="bulkForm{{ $p->id_peminjaman }}">
-                            <table class="table table-sm table-hover">
-                                <thead class="table-light">
-                                <tr>
-                                    <th width="50">Pilih</th>
-                                    <th>Judul</th>
-                                    <th>Barcode</th>
-                                    <th>Status</th>
-                                    <th>Perpanjang?</th>
-                                    <th>Batas Kembali</th>
-                                </tr>
-                                </thead>
-                                <tbody>
-                                @foreach($p->loan_items as $item)
-                                    @php
-                                        // Tentukan class row berdasarkan status DISPLAY
-                                        $rowClass = '';
-                                        if ($item->display_status === 'dikembalikan') {
-                                            $rowClass = 'table-success';
-                                        } elseif ($item->display_status === 'hilang') {
-                                            $rowClass = 'table-danger';
-                                        }
-
-                                        // Cek apakah item bisa dipilih
-                                        $canSelect = $item->display_status === 'dipinjam';
-
-                                        // Gunakan tanggal dari SNAPSHOT (loan_due_date)
-                                        $displayDate = $item->loan_due_date
-                                            ? \Carbon\Carbon::parse($item->loan_due_date)
-                                            : null;
-
-                                        // Cek telat hanya untuk yang masih dipinjam
-                                        $isPast = $displayDate && $displayDate->isPast() && $item->display_status === 'dipinjam';
-                                    @endphp
-                                    <tr class="{{ $rowClass }}">
-                                        <td>
-                                            @if($canSelect)
-                                                <input type="checkbox" name="items[]" value="{{ $item->id_item }}">
-                                            @endif
-                                        </td>
-                                        <td>{{ $item->bukus->judul }}</td>
-                                        <td>{{ $item->barcode }}</td>
-                                        <td>
-                                            @if($item->display_status === 'dikembalikan')
-                                                <span class="badge bg-success">✓ Dikembalikan</span>
-                                            @elseif($item->display_status === 'hilang')
-                                                <span class="badge bg-danger">✗ Hilang</span>
-                                            @else
-                                                <span class="badge bg-primary">Dipinjam</span>
-                                            @endif
-                                        </td>
-                                        <td>
-                                            {{-- Gunakan loan_extended_at dari SNAPSHOT --}}
-                                            @if($item->display_status !== 'dipinjam')
-                                                <span class="text-muted">-</span>
-                                            @elseif($item->loan_extended_at)
-                                                <span class="text-success">
-                                                <i class="fas fa-check-circle"></i>
-                                                Sudah ({{ \Carbon\Carbon::parse($item->loan_extended_at)->format('d/m/Y') }})
-                                            </span>
-                                            @else
-                                                <span class="text-warning">
-                                                <i class="fas fa-clock"></i> Belum
-                                            </span>
-                                            @endif
-                                        </td>
-                                        <td>
-                                            @if($displayDate)
-                                                <span class="{{ $isPast ? 'text-danger fw-bold' : 'text-muted' }}">
+                        <table class="table table-sm table-hover">
+                            <thead class="table-light">
+                            <tr>
+                                <th>No</th>
+                                <th>Judul</th>
+                                <th>Barcode</th>
+                                <th>Status</th>
+                                <th>Perpanjang?</th>
+                                <th>Batas Kembali</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            @foreach($p->loan_items as $index => $item)
+                                @php
+                                    $rowClass = match($item->display_status) {
+                                        'dikembalikan' => 'table-success',
+                                        'hilang' => 'table-danger',
+                                        default => ''
+                                    };
+                                    $displayDate = $item->loan_due_date ? \Carbon\Carbon::parse($item->loan_due_date) : null;
+                                    $isPast = $displayDate && $displayDate->isPast() && $item->display_status === 'dipinjam';
+                                @endphp
+                                <tr class="{{ $rowClass }}">
+                                    <td>{{ $index + 1 }}</td>
+                                    <td>{{ $item->bukus->judul }}</td>
+                                    <td><code>{{ $item->barcode }}</code></td>
+                                    <td>
+                                        @if($item->display_status === 'dikembalikan')
+                                            <span class="badge bg-success">✓ Dikembalikan</span>
+                                        @elseif($item->display_status === 'hilang')
+                                            <span class="badge bg-danger">✗ Hilang</span>
+                                        @else
+                                            <span class="badge bg-primary">Dipinjam</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @if($item->display_status !== 'dipinjam')
+                                            <span class="text-muted">-</span>
+                                        @elseif($item->loan_extended_at)
+                                            <span class="text-success"><i class="fas fa-check-circle"></i> Sudah</span>
+                                        @else
+                                            <span class="text-warning"><i class="fas fa-clock"></i> Belum</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @if($displayDate)
+                                            <span class="{{ $isPast ? 'text-danger fw-bold' : '' }}">
                                                 {{ $displayDate->format('d/m/Y') }}
-                                                    @if($isPast)
-                                                        <i class="fas fa-exclamation-triangle"></i> Telat!
-                                                    @endif
+                                                @if($isPast) <i class="fas fa-exclamation-triangle"></i> @endif
                                             </span>
-                                            @else
-                                                <span class="text-muted">-</span>
-                                            @endif
-                                        </td>
-                                    </tr>
-                                @endforeach
-                                </tbody>
-                            </table>
-                        </form>
+                                        @else
+                                            <span class="text-muted">-</span>
+                                        @endif
+                                    </td>
+                                </tr>
+                            @endforeach
+                            </tbody>
+                        </table>
                     </div>
                     <div class="modal-footer">
-                        @php
-                            $canExtend = $p->loan_items
-                                ->where('display_status', 'dipinjam')
-                                ->filter(function($item) {
-                                    return $item->loan_extended_at === null;
-                                })->count() > 0;
-
-                            $canReturn = $p->loan_items
-                                ->where('display_status', 'dipinjam')
-                                ->count() > 0;
-                        @endphp
-
-                        @if($canExtend)
-                            <button class="btn btn-warning" onclick="bulkAction('perpanjang', '{{ $p->id_peminjaman }}')">
-                                <i class="fas fa-calendar-plus"></i> Perpanjang Terpilih
-                            </button>
-                        @endif
-
-                        @if($canReturn)
-                            <button class="btn btn-success" onclick="bulkAction('kembalikan', '{{ $p->id_peminjaman }}')">
-                                <i class="fas fa-check-circle"></i> Kembalikan Terpilih
-                            </button>
-                        @endif
-
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
                     </div>
                 </div>
@@ -241,14 +216,139 @@
         </div>
     @endforeach
 
-    {{-- MODAL DETAIL PEMINJAMAN --}}
+    {{-- =====================================================
+        MODAL PERPANJANG - TERPISAH DARI MODAL BUKU
+    ===================================================== --}}
     @foreach($peminjaman as $p)
-        <div class="modal fade" id="detailModal{{ $p->id_peminjaman }}" tabindex="-1" aria-labelledby="detailModalLabel{{ $p->id_peminjaman }}" aria-hidden="true">
+        @php $canExtendItems = $p->loan_items->where('display_status', 'dipinjam')->filter(fn($i) => $i->loan_extended_at === null); @endphp
+        @if($canExtendItems->count() > 0)
+            <div class="modal fade" id="perpanjangModal{{ $p->id_peminjaman }}" tabindex="-1">
+                <div class="modal-dialog modal-lg modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header bg-warning text-dark">
+                            <h5 class="modal-title"><i class="fas fa-calendar-plus me-2"></i>Perpanjang Buku #{{ $p->no_transaksi }}</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <form action="{{ route('peminjaman.perpanjang', $p->id_peminjaman) }}" method="POST">
+                            @csrf
+                            <div class="modal-body">
+                                <p class="text-muted mb-3">Pilih buku yang ingin diperpanjang:</p>
+                                <table class="table table-sm table-hover">
+                                    <thead class="table-light">
+                                    <tr>
+                                        <th width="50"><input type="checkbox" id="checkAllPerpanjang{{ $p->id_peminjaman }}" onclick="toggleAllCheckbox(this, 'perpanjang{{ $p->id_peminjaman }}')"></th>
+                                        <th>Judul</th>
+                                        <th>Barcode</th>
+                                        <th>Batas Kembali Saat Ini</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    @foreach($canExtendItems as $item)
+                                        <tr>
+                                            <td><input type="checkbox" name="items[]" value="{{ $item->id_item }}" class="perpanjang{{ $p->id_peminjaman }}"></td>
+                                            <td>{{ $item->bukus->judul }}</td>
+                                            <td><code>{{ $item->barcode }}</code></td>
+                                            <td>{{ \Carbon\Carbon::parse($item->loan_due_date)->format('d/m/Y') }}</td>
+                                        </tr>
+                                    @endforeach
+                                    </tbody>
+                                </table>
+                                <hr>
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Tambah berapa hari? (Max 7 hari)</label>
+                                    <select name="hari" class="form-select" required>
+                                        <option value="">Pilih jumlah hari</option>
+                                        @for($i = 1; $i <= 7; $i++)
+                                            <option value="{{ $i }}">{{ $i }} hari</option>
+                                        @endfor
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                                <button type="submit" class="btn btn-warning"><i class="fas fa-calendar-plus me-1"></i>Perpanjang</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        @endif
+    @endforeach
+
+    {{-- =====================================================
+        MODAL KEMBALIKAN - TERPISAH DARI MODAL BUKU
+    ===================================================== --}}
+    @foreach($peminjaman as $p)
+        @php $canReturnItems = $p->loan_items->where('display_status', 'dipinjam'); @endphp
+        @if($canReturnItems->count() > 0)
+            <div class="modal fade" id="kembalikanModal{{ $p->id_peminjaman }}" tabindex="-1">
+                <div class="modal-dialog modal-lg modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header bg-success text-white">
+                            <h5 class="modal-title"><i class="fas fa-undo me-2"></i>Kembalikan Buku #{{ $p->no_transaksi }}</h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <form action="{{ route('peminjaman.kembalikan', $p->id_peminjaman) }}" method="POST">
+                            @csrf
+                            <div class="modal-body">
+                                <p class="text-muted mb-3">Pilih buku yang ingin dikembalikan:</p>
+                                <table class="table table-sm table-hover">
+                                    <thead class="table-light">
+                                    <tr>
+                                        <th width="50"><input type="checkbox" id="checkAllKembalikan{{ $p->id_peminjaman }}" onclick="toggleAllCheckbox(this, 'kembalikan{{ $p->id_peminjaman }}')"></th>
+                                        <th>Judul</th>
+                                        <th>Barcode</th>
+                                        <th>Batas Kembali</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    @foreach($canReturnItems as $item)
+                                        @php
+                                            $displayDate = $item->loan_due_date ? \Carbon\Carbon::parse($item->loan_due_date) : null;
+                                            $isPast = $displayDate && $displayDate->isPast();
+                                        @endphp
+                                        <tr class="{{ $isPast ? 'table-danger' : '' }}">
+                                            <td><input type="checkbox" name="items[]" value="{{ $item->id_item }}" class="kembalikan{{ $p->id_peminjaman }}"></td>
+                                            <td>{{ $item->bukus->judul }}</td>
+                                            <td><code>{{ $item->barcode }}</code></td>
+                                            <td>
+                                                {{ $displayDate ? $displayDate->format('d/m/Y') : '-' }}
+                                                @if($isPast) <span class="badge bg-danger">TELAT!</span> @endif
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                    </tbody>
+                                </table>
+                                <hr>
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Kondisi buku saat dikembalikan:</label>
+                                    <select name="kondisi" class="form-select" required>
+                                        <option value="">Pilih kondisi</option>
+                                        <option value="baik">✅ Baik</option>
+                                        <option value="rusak">⚠️ Rusak</option>
+                                        <option value="hilang">❌ Hilang</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                                <button type="submit" class="btn btn-success"><i class="fas fa-undo me-1"></i>Kembalikan</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        @endif
+    @endforeach
+
+    {{-- MODAL DETAIL, HAPUS, DAN LAINNYA TETAP SAMA --}}
+    @foreach($peminjaman as $p)
+        <div class="modal fade" id="detailModal{{ $p->id_peminjaman }}" tabindex="-1">
             <div class="modal-dialog modal-lg modal-dialog-centered">
                 <div class="modal-content">
                     <div class="modal-header bg-info text-white">
-                        <h5 class="modal-title" id="detailModalLabel{{ $p->id_peminjaman }}">Detail Peminjaman #{{ $p->id_peminjaman }}</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        <h5 class="modal-title">Detail Peminjaman #{{ $p->id_peminjaman }}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
                         <p><b>ID Buku :</b> {{ $p->id_buku }}</p>
@@ -261,8 +361,6 @@
                         <p><b>Status :</b> {{ ucfirst($p->status) ?? '-' }}</p>
                         <p><b>Kondisi Buku Saat Pinjam :</b> {{ $p->kondisi ?? '-' }}</p>
                         <p><b>Kondisi Buku Saat Kembali :</b> {{ $p->kondisi_buku_saat_kembali ?? '-' }}</p>
-                        <p><b>Request Status :</b> {{ ucfirst($p->request_status) ?? '-' }}</p>
-                        <p><b>Waktu Disetujui :</b> {{ $p->approved_at ?? '-' }}</p>
                     </div>
                     <div class="modal-footer d-flex justify-content-between">
                         @if(in_array(Auth::user()->role, ['admin', 'petugas']))
@@ -277,27 +375,21 @@
         </div>
     @endforeach
 
-    {{-- MODAL HAPUS --}}
-    {{-- MODAL KONFIRMASI HAPUS --}}
     @foreach($peminjaman as $p)
-        <div class="modal fade" id="hapusModal{{ $p->id_peminjaman }}" tabindex="-1" aria-hidden="true">
+        <div class="modal fade" id="hapusModal{{ $p->id_peminjaman }}" tabindex="-1">
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content">
                     <div class="modal-header bg-danger text-white">
-                        <h5 class="modal-title">Konfirmasi Hapus Peminjaman</h5>
+                        <h5 class="modal-title">Konfirmasi Hapus</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
-                        <p>Yakin ingin menghapus peminjaman <strong>#{{ $p->no_transaksi }}</strong> atas nama <strong>{{ $p->nama_peminjam }}</strong>?</p>
-                        <p class="text-danger">Data akan hilang permanen!</p>
+                        <p>Yakin hapus peminjaman <strong>#{{ $p->no_transaksi }}</strong>?</p>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-
-                        {{-- FORM DELETE YANG BENAR --}}
                         <form action="{{ route('peminjaman.destroy', $p->id_peminjaman) }}" method="POST">
-                            @csrf
-                            @method('DELETE')
+                            @csrf @method('DELETE')
                             <button type="submit" class="btn btn-danger">Ya, Hapus!</button>
                         </form>
                     </div>
@@ -306,298 +398,250 @@
         </div>
     @endforeach
 
-    {{-- MODAL PINJAM BUKU (MODERN) --}}
-    <div class="modal fade modal-pinjam fade-in-up" id="pinjamModal" tabindex="-1" aria-labelledby="pinjamModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-centered">
+    {{-- =====================================================
+    MODAL PINJAM BUKU - FIXED BISA SCROLL
+    Ganti modal lama dengan ini bro!
+===================================================== --}}
+    <div class="modal fade" id="pinjamModal" tabindex="-1">
+        {{-- Tambah modal-dialog-scrollable biar bisa scroll --}}
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">
-                        <i class="fas fa-book-open me-2 icon-buku"></i>
-                        Pilih Buku untuk Dipinjam
-                    </h5>
-                    <span class="badge bg-light text-dark ms-2">Maks 2 Buku</span>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body p-4">
-                    <form id="search-buku-form" class="mb-4">
-                        <div class="input-group search-modern">
-                            <span class="input-group-text bg-transparent border-0">
-                                <i class="fas fa-search text-muted"></i>
-                            </span>
-                            <input type="text" id="search-buku-input" class="form-control border-0 bg-transparent" placeholder="Cari judul buku...">
-                            <button type="submit" class="btn btn-dark rounded-end-pill px-4">Cari</button>
-                            <button type="button" id="reset-buku-search" class="btn btn-outline-secondary rounded-pill ms-2 px-3">
-                                <i class="fas fa-redo"></i>
-                            </button>
-                        </div>
-                    </form>
-
-                    <div id="buku-table-container" class="table-modern mb-4"></div>
-
-                    <div id="selectedCard" class="selected-card fade-in-up" style="display: none;">
-                        <h6 class="mb-3">
-                            <i class="fas fa-check-circle me-2 icon-check"></i>
-                            Buku Terpilih (<span id="selectedCount">0</span>/2)
-                        </h6>
-                        <ul id="selectedBuku" class="list-unstyled"></ul>
-                    </div>
-
-                    <small class="text-muted d-block mt-2">
-                        <i class="fas fa-info-circle me-1"></i>
-                        Pilih 1 atau 2 buku. Klik "Eksemplar" untuk pilih item.
-                    </small>
-                </div>
-                <div class="modal-footer border-0 bg-light">
-                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">
-                        <i class="fas fa-times me-1"></i> Batal
-                    </button>
-                    <button type="button" id="lanjutForm" class="btn-lanjut rounded-pill px-4" disabled>
-                        <i class="fas fa-arrow-right me-2"></i> Lanjut
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    {{-- SUB-MODAL EKSAMPLAR --}}
-    <div class="modal fade modal-pinjam" id="eksemplarModal" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header bg-info text-white">
-                    <h5 class="modal-title">
-                        <i class="fas fa-barcode me-2 icon-eksemplar"></i>
-                        <span id="eksemplarModalLabel">Pilih Eksemplar</span>
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body p-4">
-                    <div class="input-group search-modern mb-3">
-                        <span class="input-group-text bg-transparent border-0">
-                            <i class="fas fa-barcode text-muted"></i>
-                        </span>
-                        <input type="text" id="searchEksemplar" class="form-control border-0 bg-transparent" placeholder="Cari barcode...">
-                    </div>
-                    <div id="eksemplar-table-container" class="mt-3"></div>
-                    <div id="eksemplarPagination" class="d-flex justify-content-center mt-3"></div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-
-
-        <div class="modal fade modal-pinjam" id="newPinjamDetailModal" tabindex="-1">
-            <div class="modal-dialog modal-dialog-centered">
-                <form id="pinjamForm" method="POST" action="{{ route('peminjaman.storeRequest') }}" class="form-modern">
-                    @csrf
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title">
-                                <i class="fas fa-clipboard-list me-2 text-primary"></i>
-                                Detail Peminjaman
-                            </h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                        </div>
-                        <div class="modal-body p-4">
-                            <div id="idItemContainer"></div>
-                            <div class="alert alert-info rounded-3 mb-4">
-                                <h6><i class="fas fa-book me-2"></i>Buku Terpilih:</h6>
-                                <ul id="bukuDetailList" class="mb-0"></ul>
-                            </div>
-                            <div class="mb-4">
-                                <label class="form-label fw-bold">User</label>
-                                <input type="hidden" name="id_user" value="{{ Auth::id() }}">
-                            </div>
-                            <div class="mb-4">
-                                <label class="form-label fw-bold" for="selectedMemberDisplay">Pilih Member</label>  <!-- TAMBAH for -->
-                                <div class="input-group">
-                                    <input type="text" id="selectedMemberDisplay" class="form-control" placeholder="Klik untuk pilih member..." readonly>
-                                    <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#memberModal">
-                                        <i class="fas fa-search"></i> Cari
-                                    </button>
-                                </div>
-                                <input type="hidden" name="id_member" id="selectedMemberId" value="">
-                                <input type="hidden" name="id_user" value="{{ auth()->id() }}"> <!-- Petugas -->
-                            </div>
-                            <div class="mb-4">
-                                <label class="form-label fw-bold" for="namaPeminjam">Nama Peminjam</label>  <!-- TAMBAH for -->
-                                <input type="text" name="nama_peminjam" id="namaPeminjam" class="form-control" required readonly>
-                            </div>
-                            <div class="mb-4">
-                                <label class="form-label fw-bold" for="alamatPeminjam">Alamat</label>  <!-- TAMBAH for -->
-                                <input type="text" name="alamat" id="alamatPeminjam" class="form-control" required placeholder="Masukkan alamat peminjam" readonly>
-                            </div>
-                            <div class="mb-0">
-                                <label class="form-label fw-bold" for="pengembalian">Tanggal Pengembalian</label>  <!-- TAMBAH for -->
-                                <input type="date" name="pengembalian" id="pengembalian" class="form-control" required
-                                       min="{{ now()->addDay()->format('Y-m-d') }}"
-                                       max="{{ now()->addDays(7)->format('Y-m-d') }}">
-                                <small class="text-muted">Maksimal 7 hari dari sekarang</small>
-                            </div>
-                        </div>
-                        <div class="modal-footer border-0 bg-light">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                            <button type="submit" class="btn btn-success">Pinjam Buku</button>
-                        </div>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-    <!-- MODAL PILIH MEMBER (SEPERTI PILIH BUKU) -->
-    <div class="modal fade modal-pinjam" id="memberModal" tabindex="-1">
-        <div class="modal-dialog modal-lg modal-dialog-centered">
-            <div class="modal-content">
+                {{-- Header Modal --}}
                 <div class="modal-header bg-primary text-white">
                     <h5 class="modal-title">
-                        <i class="fas fa-users me-2"></i> Pilih Member
+                        <i class="fas fa-book-open me-2"></i>Pilih Buku untuk Dipinjam
                     </h5>
+                    <span class="badge bg-light text-dark ms-2">Maks 2 Buku</span>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body p-4">
-                    <!-- Search Member -->
-                    <form id="search-member-form" class="mb-4">
-                        <div class="input-group search-modern">
-                        <span class="input-group-text bg-transparent border-0">
-                            <i class="fas fa-search text-muted"></i>
-                        </span>
-                            <input type="text" id="search-member-input" class="form-control border-0 bg-transparent" placeholder="Cari nama / email member...">
-                            <button type="submit" class="btn btn-dark rounded-end-pill px-4">Cari</button>
-                            <button type="button" id="reset-member-search" class="btn btn-outline-secondary rounded-pill ms-2 px-3">
-                                <i class="fas fa-redo"></i>
-                            </button>
+
+                {{-- Body Modal - Bisa Scroll --}}
+                <div class="modal-body p-4" style="max-height: 65vh; overflow-y: auto;">
+
+                    {{-- ===== FITUR SCAN BARCODE ===== --}}
+                    <div class="card border-primary mb-3">
+                        <div class="card-header bg-primary text-white py-2">
+                            <i class="fas fa-barcode me-2"></i>Scan Barcode (Lebih Cepat!)
                         </div>
-                    </form>
+                        <div class="card-body py-3">
+                            <div class="row align-items-center">
+                                <div class="col-md-9">
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fas fa-qrcode"></i></span>
+                                        <input type="text" id="scanBarcodeInput" class="form-control"
+                                               placeholder="Scan atau ketik barcode/ISBN..." autofocus>
+                                        <button type="button" id="btnScanBarcode" class="btn btn-primary">
+                                            <i class="fas fa-plus"></i> Tambah
+                                        </button>
+                                    </div>
+                                    <small class="text-muted">Langsung scan barcode eksemplar atau ISBN buku</small>
+                                </div>
+                                <div class="col-md-3 text-center">
+                                    <span class="badge bg-success" id="scanStatus">Siap Scan</span>
+                                </div>
+                            </div>
+                            {{-- Tempat hasil scan --}}
+                            <div id="scanResult" class="mt-2"></div>
+                        </div>
+                    </div>
 
-                    <!-- Table Member -->
-                    <div id="member-table-container" class="table-modern mb-4"></div>
+                    <hr class="my-3">
+                    <p class="text-center text-muted mb-3"><small>— atau cari manual —</small></p>
 
+                    {{-- ===== SEARCH BUKU MANUAL ===== --}}
+                    <div class="input-group mb-3">
+                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+                        <input type="text" id="search-buku-input" class="form-control" placeholder="Cari judul buku...">
+                        <button type="button" id="btn-search-buku" class="btn btn-dark">Cari</button>
+                        <button type="button" id="reset-buku-search" class="btn btn-outline-secondary">
+                            <i class="fas fa-redo"></i>
+                        </button>
+                    </div>
+
+                    {{-- Table Buku (bisa scroll sendiri) --}}
+                    <div id="buku-table-container" class="mb-3" style="max-height: 200px; overflow-y: auto;"></div>
+
+                    {{-- ===== CARD BUKU TERPILIH ===== --}}
+                    <div id="selectedCard" class="card border-success mt-3" style="display: none;">
+                        <div class="card-header bg-success text-white py-2">
+                            <i class="fas fa-check-circle me-2"></i>Buku Terpilih (<span id="selectedCount">0</span>/2)
+                        </div>
+                        <div class="card-body py-2">
+                            <div id="selectedBuku"></div>
+                        </div>
+                    </div>
                 </div>
-                <div class="modal-footer border-0 bg-light">
-                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Batal</button>
-                </div>
-            </div>
-        </div>
-    </div>
 
-
-
-    <!-- Modal Peringatan Max Buku -->
-    <div class="modal fade" id="maxBukuModal" tabindex="-1" aria-labelledby="maxBukuLabel" aria-hidden="true">
-        <div class="modal-dialog modal-sm modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header bg-warning text-dark">
-                    <h5 class="modal-title" id="maxBukuLabel">Peringatan</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    Anda sudah mencapai batas maksimal 2 buku. Hapus salah satu jika ingin ganti.
-                </div>
+                {{-- Footer Modal --}}
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i>Batal
+                    </button>
+                    <button type="button" id="lanjutForm" class="btn btn-primary" disabled>
+                        <i class="fas fa-arrow-right me-1"></i>Lanjut
+                    </button>
                 </div>
             </div>
         </div>
     </div>
 
-    {{-- MODAL KONFirmasi PERPANJANG --}}
-    <div class="modal fade" id="konfirmPerpanjangModal" tabindex="-1" aria-labelledby="konfirmPerpanjangLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header bg-warning text-white">
-                    <h5 class="modal-title" id="konfirmPerpanjangLabel">Konfirmasi Perpanjangan</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <form id="perpanjangForm" method="POST">
-                    @csrf
-                    <div class="modal-body">
-                        <p>Pilih jumlah hari perpanjangan (maks 7 hari):</p>
-                        <select name="hari" class="form-control" required>
-                            <option value="">Pilih hari</option>
-                            @for($i=1; $i<=7; $i++)
-                                <option value="{{ $i }}">{{ $i }} hari</option>
-                            @endfor
-                        </select>
-                        <div id="selectedItemsPerpanjang" class="mt-3 small text-muted"></div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                        <button type="submit" class="btn btn-warning">Perpanjang</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    {{-- MODAL KONFirmasi KEMBALIKAN --}}
-    <div class="modal fade" id="konfirmKembalikanModal" tabindex="-1" aria-labelledby="konfirmKembalikanLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header bg-success text-white">
-                    <h5 class="modal-title" id="konfirmKembalikanLabel">Konfirmasi Pengembalian</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <form id="kembalikanForm" method="POST">
-                    @csrf
-                    <div class="modal-body">
-                        <p>Pilih kondisi buku saat dikembalikan:</p>
-                        <select name="kondisi" class="form-control" required>
-                            <option value="">Pilih kondisi</option>
-                            <option value="baik">Baik</option>
-                            <option value="rusak">Rusak</option>
-                            <option value="hilang">Hilang</option>
-                        </select>
-                        <div id="selectedItemsKembalikan" class="mt-3 small text-muted"></div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                        <button type="submit" class="btn btn-success">Kembalikan</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
+    {{-- Modal Eksemplar, Member, Detail Pinjam (tetap sama seperti sebelumnya) --}}
+    @include('peminjaman.partials.modal-eksemplar')
+    @include('peminjaman.partials.modal-member')
+    @include('peminjaman.partials.modal-detail-pinjam')
 
 @endsection
+
 @push('scripts')
     <script>
+        // =====================================================
+        // FUNCTION TOGGLE CHECKBOX (untuk perpanjang/kembalikan)
+        // =====================================================
+        function toggleAllCheckbox(source, className) {
+            const checkboxes = document.querySelectorAll('.' + className);
+            checkboxes.forEach(cb => cb.checked = source.checked);
+        }
+
         document.addEventListener('DOMContentLoaded', function () {
+            // ===== DEKLARASI VARIABEL =====
             const pinjamModal = document.getElementById('pinjamModal');
             const eksemplarModal = document.getElementById('eksemplarModal');
             const memberModal = document.getElementById('memberModal');
             const memberTableContainer = document.getElementById('member-table-container');
-            const searchMemberForm = document.getElementById('search-member-form');
             const searchMemberInput = document.getElementById('search-member-input');
-            const resetMemberSearch = document.getElementById('reset-member-search');
 
-            let selectedItems = [];
-            let currentIdBuku = '';
-            let maxSelected = 2;
+            let selectedItems = [];      // Array buat nyimpen buku yang dipilih
+            let currentIdBuku = '';      // ID buku yang lagi dipilih eksemplarnya
+            let maxSelected = 2;         // Maksimal buku yang bisa dipinjam
 
-            // ========== PINJAM MODAL ==========
-            if (pinjamModal) {
-                pinjamModal.addEventListener('show.bs.modal', () => {
-                    selectedItems = [];
-                    updateSelectedList();
-                    loadBukuTable();
-                    setTimeout(attachLanjutEvent, 100);
+            // =====================================================
+            // FITUR SCAN BARCODE - BARU!
+            // =====================================================
+            const scanInput = document.getElementById('scanBarcodeInput');
+            const btnScan = document.getElementById('btnScanBarcode');
+            const scanResult = document.getElementById('scanResult');
+            const scanStatus = document.getElementById('scanStatus');
+
+            // Function untuk proses scan barcode
+            async function processBarcodeScan(barcode) {
+                // Validasi: barcode gak boleh kosong
+                if (!barcode.trim()) return;
+
+                // Update status jadi "Mencari..."
+                scanStatus.textContent = 'Mencari...';
+                scanStatus.className = 'badge bg-warning';
+                scanResult.innerHTML = '';
+
+                try {
+                    // Kirim request ke server
+                    const response = await fetch('{{ route("peminjaman.scanBarcode") }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: JSON.stringify({ barcode: barcode.trim() })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        // Cek apakah buku ini udah dipilih sebelumnya
+                        if (selectedItems.some(s => s.id_item === data.data.id_item)) {
+                            scanResult.innerHTML = '<div class="alert alert-info py-1 mb-0"><small><i class="fas fa-info-circle"></i> Buku ini udah dipilih bro!</small></div>';
+                            scanStatus.textContent = 'Udah Dipilih';
+                            scanStatus.className = 'badge bg-info';
+                            scanInput.value = '';
+                            scanInput.focus();
+                            return;
+                        }
+
+                        // Cek apakah udah max 2 buku
+                        if (selectedItems.length >= maxSelected) {
+                            scanResult.innerHTML = '<div class="alert alert-warning py-1 mb-0"><small><i class="fas fa-exclamation-triangle"></i> Maksimal ' + maxSelected + ' buku bro!</small></div>';
+                            scanStatus.textContent = 'Kuota Penuh';
+                            scanStatus.className = 'badge bg-danger';
+                            scanInput.value = '';
+                            scanInput.focus();
+                            return;
+                        }
+
+                        // SUKSES! Tambahkan ke list
+                        selectedItems.push({
+                            id_item: data.data.id_item,
+                            barcode: data.data.barcode,
+                            kondisi: data.data.kondisi,
+                            judul: data.data.judul
+                        });
+
+                        updateSelectedList();
+                        scanResult.innerHTML = '<div class="alert alert-success py-1 mb-0"><small><i class="fas fa-check-circle"></i> <strong>' + data.data.judul + '</strong> berhasil ditambahkan!</small></div>';
+                        scanStatus.textContent = 'Berhasil!';
+                        scanStatus.className = 'badge bg-success';
+                        scanInput.value = '';
+                        scanInput.focus();
+
+                        // Reset status setelah 2 detik
+                        setTimeout(() => {
+                            scanStatus.textContent = 'Siap Scan';
+                            scanStatus.className = 'badge bg-success';
+                            scanResult.innerHTML = '';
+                        }, 2000);
+
+                    } else {
+                        // GAGAL - Tampilkan pesan error
+                        scanResult.innerHTML = '<div class="alert alert-danger py-1 mb-0"><small><i class="fas fa-times-circle"></i> ' + data.message + '</small></div>';
+                        scanStatus.textContent = 'Gak Ketemu';
+                        scanStatus.className = 'badge bg-danger';
+                        scanInput.select(); // Select text biar gampang hapus
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    scanResult.innerHTML = '<div class="alert alert-danger py-1 mb-0"><small><i class="fas fa-times-circle"></i> Terjadi kesalahan!</small></div>';
+                    scanStatus.textContent = 'Error';
+                    scanStatus.className = 'badge bg-danger';
+                }
+            }
+
+            // Event: Klik tombol scan
+            if (btnScan) {
+                btnScan.addEventListener('click', () => processBarcodeScan(scanInput.value));
+            }
+
+            // Event: Tekan Enter di input scan
+            if (scanInput) {
+                scanInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        processBarcodeScan(this.value);
+                    }
                 });
             }
 
-            function attachLanjutEvent() {
-                const lanjutBtn = document.getElementById('lanjutForm');
-                if (lanjutBtn) {
-                    lanjutBtn.onclick = null;
-                    lanjutBtn.addEventListener('click', lanjutHandler);
-                }
+            // =====================================================
+            // MODAL PINJAM BUKU
+            // =====================================================
+            if (pinjamModal) {
+                pinjamModal.addEventListener('show.bs.modal', () => {
+                    selectedItems = [];  // Reset pilihan
+                    updateSelectedList();
+                    loadBukuTable();     // Load table buku
+                    // Focus ke input scan setelah modal muncul
+                    setTimeout(() => {
+                        if (scanInput) scanInput.focus();
+                    }, 500);
+                });
             }
 
-            function lanjutHandler() {
+            // Tombol Lanjut
+            document.getElementById('lanjutForm')?.addEventListener('click', function() {
                 if (selectedItems.length === 0) {
-                    alert('Pilih minimal 1 buku!');
+                    alert('Pilih minimal 1 buku dulu bro!');
                     return;
                 }
 
+                // Isi hidden input dengan id_item yang dipilih
                 const container = document.getElementById('idItemContainer');
                 if (container) {
                     container.innerHTML = '';
@@ -610,43 +654,45 @@
                     });
                 }
 
+                // Tampilkan list buku di modal detail
                 const bukuList = document.getElementById('bukuDetailList');
                 if (bukuList) {
                     bukuList.innerHTML = selectedItems.map(item =>
-                        `<li><strong>${item.barcode}</strong> <small class="text-muted">(${item.kondisi})</small></li>`
+                        `<li><strong>${item.barcode}</strong> - ${item.judul || ''} <small class="text-muted">(${item.kondisi})</small></li>`
                     ).join('');
                 }
 
-                const pinjamEl = document.getElementById('pinjamModal');
-                const detailEl = document.getElementById('newPinjamDetailModal');
-
-                if (!pinjamEl || !detailEl) {
-                    console.error('Modal tidak ditemukan:', { pinjamEl, detailEl });
-                    return;
-                }
-
-                const bsPinjam = bootstrap.Modal.getInstance(pinjamEl) || new bootstrap.Modal(pinjamEl);
+                // Tutup modal pinjam, buka modal detail
+                const bsPinjam = bootstrap.Modal.getInstance(pinjamModal);
                 bsPinjam.hide();
 
-                pinjamEl.addEventListener('hidden.bs.modal', function openDetail() {
-                    pinjamEl.removeEventListener('hidden.bs.modal', openDetail);
+                pinjamModal.addEventListener('hidden.bs.modal', function handler() {
+                    pinjamModal.removeEventListener('hidden.bs.modal', handler);
                     document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
 
-                    const modal = new bootstrap.Modal(detailEl, {
-                        backdrop: 'static',
-                        keyboard: false,
-                        focus: false
-                    });
-                    modal.show();
-
-                    detailEl.addEventListener('shown.bs.modal', () => {
-                        const input = detailEl.querySelector('#selectedMemberDisplay');
-                        if (input) input.focus();
-                    }, { once: true });
+                    const detailModal = new bootstrap.Modal(document.getElementById('newPinjamDetailModal'));
+                    detailModal.show();
                 });
+            });
+
+            // =====================================================
+            // LOAD TABLE BUKU
+            // =====================================================
+            function loadBukuTable(search = '', page = 1) {
+                const container = document.getElementById('buku-table-container');
+                container.innerHTML = '<div class="text-center py-3"><div class="spinner-border spinner-border-sm text-primary"></div> Memuat...</div>';
+
+                fetch(`/peminjaman/bukus?search=${encodeURIComponent(search)}&page=${page}`, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                })
+                    .then(res => res.text())
+                    .then(html => {
+                        container.innerHTML = html;
+                        attachPilihEksemplarButtons();
+                        attachBukuPagination();
+                    });
             }
 
-            // ========== BUKU ==========
             function attachPilihEksemplarButtons() {
                 document.querySelectorAll('.pilih-eksemplar').forEach(btn => {
                     btn.onclick = function () {
@@ -659,72 +705,62 @@
                 });
             }
 
-            function loadBukuTable(search = '', page = 1) {
-                fetch(`/peminjaman/bukus?search=${encodeURIComponent(search)}&page=${page}`, {
-                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
-                })
-                    .then(res => res.text())
-                    .then(html => {
-                        document.getElementById('buku-table-container').innerHTML = html;
-                        attachPilihEksemplarButtons();
-                        attachBukuPagination();
-                    });
-            }
-
             function attachBukuPagination() {
                 document.querySelectorAll('#buku-table-container .pagination a').forEach(link => {
                     link.onclick = e => {
                         e.preventDefault();
                         const url = new URL(link.href);
-                        const search = url.searchParams.get('search') || '';
-                        const page = url.searchParams.get('page') || 1;
-                        loadBukuTable(search, page);
+                        loadBukuTable(url.searchParams.get('search') || '', url.searchParams.get('page') || 1);
                     };
                 });
             }
 
-            // ========== EKSEMPLAR ==========
+            // Search Buku
+            document.getElementById('btn-search-buku')?.addEventListener('click', () => {
+                loadBukuTable(document.getElementById('search-buku-input').value.trim());
+            });
+
+            document.getElementById('search-buku-input')?.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    loadBukuTable(this.value.trim());
+                }
+            });
+
+            document.getElementById('reset-buku-search')?.addEventListener('click', () => {
+                document.getElementById('search-buku-input').value = '';
+                loadBukuTable();
+            });
+
+            // =====================================================
+            // LOAD EKSEMPLAR
+            // =====================================================
             function loadEksemplar(id_buku, search = '', page = 1) {
                 currentIdBuku = id_buku;
+                const container = document.getElementById('eksemplar-table-container');
+                container.innerHTML = '<div class="text-center py-3"><div class="spinner-border spinner-border-sm text-primary"></div></div>';
+
                 fetch(`/get-eksemplar-by-buku/${id_buku}?query=${encodeURIComponent(search)}&page=${page}`)
                     .then(res => res.json())
                     .then(data => {
-                        let html = `<div class="table-responsive"><table class="table table-sm table-hover"><thead class="table-light"><tr><th>Barcode</th><th>Kondisi</th><th>Aksi</th></tr></thead><tbody>`;
+                        let html = `<table class="table table-sm table-hover mb-0"><thead class="table-light"><tr><th>Barcode</th><th>Kondisi</th><th>Aksi</th></tr></thead><tbody>`;
                         if (data.data.length === 0) {
-                            html += `<tr><td colspan="3" class="text-center text-muted">Tidak ada eksemplar</td></tr>`;
+                            html += `<tr><td colspan="3" class="text-center text-muted">Gak ada eksemplar</td></tr>`;
                         } else {
                             data.data.forEach(item => {
                                 const isSelected = selectedItems.some(s => s.id_item === item.id_item);
                                 html += `<tr class="${isSelected ? 'table-secondary' : ''}">
-                        <td>${item.barcode}</td>
-                        <td><span class="badge bg-success">${item.kondisi}</span></td>
-                        <td>
-                            <button class="btn btn-sm btn-primary pilih-item"
-                                    data-id="${item.id_item}"
-                                    data-barcode="${item.barcode}"
-                                    data-kondisi="${item.kondisi}"
-                                    ${isSelected ? 'disabled' : ''}>Pilih</button>
-                        </td>
-                    </tr>`;
+                            <td><code>${item.barcode}</code></td>
+                            <td><span class="badge bg-success">${item.kondisi}</span></td>
+                            <td><button class="btn btn-sm btn-primary pilih-item" data-id="${item.id_item}" data-barcode="${item.barcode}" data-kondisi="${item.kondisi}" ${isSelected ? 'disabled' : ''}>Pilih</button></td>
+                        </tr>`;
                             });
                         }
-                        html += `</tbody></table></div>`;
-                        html += data.links || '';
-                        document.getElementById('eksemplar-table-container').innerHTML = html;
+                        html += `</tbody></table>`;
+                        if (data.links) html += `<div class="mt-2">${data.links}</div>`;
+                        container.innerHTML = html;
                         attachEksemplarButtons();
-                        attachEksemplarPagination(search);
                     });
-            }
-
-            function attachEksemplarPagination(currentSearch) {
-                document.querySelectorAll('#eksemplar-table-container .pagination a').forEach(link => {
-                    link.onclick = e => {
-                        e.preventDefault();
-                        const url = new URL(link.href);
-                        const page = url.searchParams.get('page') || 1;
-                        loadEksemplar(currentIdBuku, currentSearch, page);
-                    };
-                });
             }
 
             function attachEksemplarButtons() {
@@ -733,21 +769,28 @@
                         const id = parseInt(this.dataset.id);
                         if (selectedItems.some(s => s.id_item === id)) return;
                         if (selectedItems.length >= maxSelected) {
-                            new bootstrap.Modal(document.getElementById('maxBukuModal')).show();
+                            alert('Maksimal ' + maxSelected + ' buku bro!');
                             return;
                         }
                         selectedItems.push({
                             id_item: id,
                             barcode: this.dataset.barcode,
-                            kondisi: this.dataset.kondisi
+                            kondisi: this.dataset.kondisi,
+                            judul: ''
                         });
                         updateSelectedList();
-                        loadEksemplar(currentIdBuku, document.getElementById('searchEksemplar')?.value || '');
-                        eksemplarModal.querySelector('.btn-close')?.click();
+                        bootstrap.Modal.getInstance(eksemplarModal)?.hide();
                     };
                 });
             }
 
+            document.getElementById('searchEksemplar')?.addEventListener('input', function () {
+                if (currentIdBuku) loadEksemplar(currentIdBuku, this.value.trim());
+            });
+
+            // =====================================================
+            // UPDATE SELECTED LIST (Buku yang dipilih)
+            // =====================================================
             function updateSelectedList() {
                 const list = document.getElementById('selectedBuku');
                 const count = document.getElementById('selectedCount');
@@ -756,9 +799,15 @@
 
                 if (list) {
                     list.innerHTML = selectedItems.map((item, i) => `
-                <div class="d-flex justify-content-between align-items-center p-2 border rounded mb-2 bg-light">
-                    <div><strong>${item.barcode}</strong><small class="text-muted d-block">Kondisi: ${item.kondisi}</small></div>
-                    <button class="btn btn-sm btn-danger" onclick="removeItem(${i})"><i class="fas fa-times"></i></button>
+                <div class="d-flex justify-content-between align-items-center p-2 border rounded mb-2 bg-white">
+                    <div>
+                        <strong>${item.barcode}</strong>
+                        ${item.judul ? '<br><small class="text-muted">' + item.judul + '</small>' : ''}
+                        <br><small class="text-muted">Kondisi: ${item.kondisi}</small>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-danger" onclick="removeItem(${i})">
+                        <i class="fas fa-times"></i>
+                    </button>
                 </div>
             `).join('');
                 }
@@ -767,89 +816,15 @@
                 if (lanjutBtn) lanjutBtn.disabled = selectedItems.length === 0;
             }
 
-            // ========== BULK ACTION: Perpanjang & Kembalikan ==========
-            function selectAll(checkbox, peminjamanId) {
-                const form = document.getElementById(`bulkForm${peminjamanId}`);
-                const checkboxes = form.querySelectorAll('input[name="items[]"]');
-                checkboxes.forEach(cb => cb.checked = checkbox.checked);
-            }
-
-            window.bulkAction = function(action, peminjamanId) {
-                const form = document.getElementById(`bulkForm${peminjamanId}`);
-                const checked = Array.from(form.querySelectorAll('input[name="items[]"]:checked'))
-                    .map(cb => ({
-                        id: cb.value,
-                        barcode: cb.closest('tr').querySelector('td:nth-child(3)')?.textContent.trim() || 'Unknown'
-                    }));
-
-                if (checked.length === 0) {
-                    alert('Pilih minimal 1 buku!');
-                    return;
-                }
-
-                let modalId, formId, route;
-                if (action === 'perpanjang') {
-                    modalId = 'konfirmPerpanjangModal';
-                    formId = 'perpanjangForm';  // BENAR
-                    route = `/peminjaman/${peminjamanId}/perpanjang`;
-                } else if (action === 'kembalikan') {
-                    modalId = 'konfirmKembalikanModal';
-                    formId = 'kembalikanForm';  // BENAR
-                    route = `/peminjaman/${peminjamanId}/kembalikan`;
-                }
-
-                // Isi daftar item yang dipilih
-                const listEl = document.getElementById(`selectedItems${action.charAt(0).toUpperCase() + action.slice(1)}`);
-                if (listEl) {
-                    listEl.innerHTML = '<strong>Buku dipilih:</strong><ul class="mb-0 ps-3">' +
-                        checked.map(item => `<li>${item.barcode}</li>`).join('') + '</ul>';
-                }
-
-                // Setup form
-                const targetForm = document.getElementById(formId);
-                if (!targetForm) {
-                    console.error('Form tidak ditemukan:', formId);
-                    return;
-                }
-                targetForm.action = route;
-
-                // Hapus input lama
-                targetForm.querySelectorAll('input[name="items[]"]').forEach(el => el.remove());
-
-                // Tambah input hidden untuk item
-                checked.forEach(item => {
-                    const input = document.createElement('input');
-                    input.type = 'hidden';
-                    input.name = 'items[]';
-                    input.value = item.id;
-                    targetForm.appendChild(input);
-                });
-
-                // Buka modal
-                new bootstrap.Modal(document.getElementById(modalId)).show();
-            };
-
+            // Function hapus item dari list
             window.removeItem = function (index) {
                 selectedItems.splice(index, 1);
                 updateSelectedList();
             };
 
-            document.getElementById('search-buku-form')?.addEventListener('submit', e => {
-                e.preventDefault();
-                const query = document.getElementById('search-buku-input').value.trim();
-                loadBukuTable(query);
-            });
-
-            document.getElementById('reset-buku-search')?.addEventListener('click', () => {
-                document.getElementById('search-buku-input').value = '';
-                loadBukuTable();
-            });
-
-            document.getElementById('searchEksemplar')?.addEventListener('input', function () {
-                if (currentIdBuku) loadEksemplar(currentIdBuku, this.value.trim());
-            });
-
-            // ========== MEMBER (SEMUA DI DALAM DOMContentLoaded) ==========
+            // =====================================================
+            // MEMBER
+            // =====================================================
             function attachMemberButtons() {
                 document.querySelectorAll('.pilih-member').forEach(btn => {
                     btn.onclick = async function () {
@@ -862,14 +837,14 @@
                             maxSelected = 2 - active;
 
                             if (maxSelected <= 0) {
-                                new bootstrap.Modal(document.getElementById('maxBukuModal')).show();
+                                alert('Member ini udah pinjam 2 buku bro!');
                                 return;
                             }
 
                             if (selectedItems.length > maxSelected) {
                                 selectedItems = selectedItems.slice(0, maxSelected);
                                 updateSelectedList();
-                                new bootstrap.Modal(document.getElementById('maxBukuModal')).show();
+                                alert('Kuota member cuma ' + maxSelected + ' buku lagi!');
                             }
 
                             document.getElementById('selectedMemberId').value = id;
@@ -878,73 +853,56 @@
                             document.getElementById('alamatPeminjam').value = '';
                             document.getElementById('alamatPeminjam').removeAttribute('readonly');
 
-                            bootstrap.Modal.getInstance(document.getElementById('memberModal')).hide();
+                            bootstrap.Modal.getInstance(memberModal)?.hide();
                             new bootstrap.Modal(document.getElementById('newPinjamDetailModal')).show();
                         } catch (err) {
-                            alert('Gagal cek kuota.');
+                            alert('Gagal cek kuota bro.');
                         }
                     };
                 });
             }
 
             if (memberModal) {
-                memberModal.addEventListener('show.bs.modal', () => {
-                    loadMemberTable();
-                });
+                memberModal.addEventListener('show.bs.modal', () => loadMemberTable());
             }
 
             function loadMemberTable(search = '', page = 1) {
-                const url = `/peminjaman/members?search=${encodeURIComponent(search)}&page=${page}`;
-
-                memberTableContainer.innerHTML = '<div class="text-center"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
-
-                fetch(url, {
+                memberTableContainer.innerHTML = '<div class="text-center py-3"><div class="spinner-border spinner-border-sm text-primary"></div></div>';
+                fetch(`/peminjaman/members?search=${encodeURIComponent(search)}&page=${page}`, {
                     headers: { 'X-Requested-With': 'XMLHttpRequest' }
                 })
                     .then(res => res.text())
                     .then(html => {
                         memberTableContainer.innerHTML = html;
-                        attachMemberButtons();  // SEKARANG AMAN!
-                        attachMemberPagination();
-                    })
-                    .catch(err => {
-                        memberTableContainer.innerHTML = '<p class="text-danger text-center">Gagal memuat member.</p>';
-                        console.error(err);
+                        attachMemberButtons();
+                        document.querySelectorAll('#member-table-container .pagination a').forEach(link => {
+                            link.onclick = e => {
+                                e.preventDefault();
+                                const url = new URL(link.href);
+                                loadMemberTable(url.searchParams.get('search') || '', url.searchParams.get('page') || 1);
+                            };
+                        });
                     });
             }
 
-            function attachMemberPagination() {
-                document.querySelectorAll('#member-table-container .pagination a').forEach(link => {
-                    link.onclick = e => {
-                        e.preventDefault();
-                        const url = new URL(link.href);
-                        const search = url.searchParams.get('search') || '';
-                        const page = url.searchParams.get('page') || 1;
-                        loadMemberTable(search, page);
-                    };
-                });
-            }
+            document.getElementById('search-member-form')?.addEventListener('submit', e => {
+                e.preventDefault();
+                loadMemberTable(searchMemberInput.value.trim());
+            });
 
-            if (searchMemberForm) {
-                searchMemberForm.addEventListener('submit', e => {
-                    e.preventDefault();
-                    loadMemberTable(searchMemberInput.value.trim());
-                });
-            }
+            document.getElementById('reset-member-search')?.addEventListener('click', () => {
+                searchMemberInput.value = '';
+                loadMemberTable();
+            });
 
-            if (resetMemberSearch) {
-                resetMemberSearch.addEventListener('click', () => {
-                    searchMemberInput.value = '';
-                    loadMemberTable();
-                });
-            }
-
-            // ========== SUBMIT FORM ==========
+            // =====================================================
+            // SUBMIT FORM PINJAM
+            // =====================================================
             document.getElementById('pinjamForm')?.addEventListener('submit', async function (e) {
                 e.preventDefault();
                 const memberId = document.getElementById('selectedMemberId')?.value;
                 if (!memberId) {
-                    alert('Pilih member dulu!');
+                    alert('Pilih member dulu bro!');
                     new bootstrap.Modal(document.getElementById('memberModal')).show();
                     return;
                 }
@@ -952,7 +910,7 @@
                     const res = await fetch(`/peminjaman/active/${memberId}`);
                     const data = await res.json();
                     if (selectedItems.length > (2 - (data.active || 0))) {
-                        new bootstrap.Modal(document.getElementById('maxBukuModal')).show();
+                        alert('Kuota member gak cukup bro!');
                         return;
                     }
                     this.submit();
@@ -960,7 +918,28 @@
                     alert('Gagal cek kuota.');
                 }
             });
+
+            // =====================================================
+// PAGINATION EKSEMPLAR DI MODAL
+// =====================================================
+            document.addEventListener('click', function(e) {
+                // Deteksi apakah yang diklik adalah link pagination dalam eksemplar
+                const paginationLink = e.target.closest('#eksemplar-table-container .pagination a, #eksemplarPagination .pagination a');
+
+                if (paginationLink) {
+                    e.preventDefault();
+
+                    const url = new URL(paginationLink.href);
+                    const page = url.searchParams.get('page') || 1;
+                    const query = url.searchParams.get('query') || '';
+
+                    // Pastikan ada ID buku yang sedang dipilih
+                    if (currentIdBuku) {
+                        loadEksemplar(currentIdBuku, query, page);
+                    }
+                }
+            });
+
         });
     </script>
 @endpush
-

@@ -13,5 +13,10 @@ class penerbits extends Model
     public $timestamps=false;
     protected $fillable=['nama_penerbit','alamat','no_telepon','email'];
 
+    public function bukus()
+    {
+        return $this->hasMany(bukus::class, 'id_penerbit', 'id_penerbit');
+    }
+
 
 }

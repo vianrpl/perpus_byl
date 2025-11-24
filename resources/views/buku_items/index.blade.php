@@ -33,6 +33,7 @@
     {{-- 🔹 Tombol navigasi --}}
         <div class="d-flex align-items-center" style="gap:8px;">
     <a href="{{ route('bukus.index') }}" class="btn btn-primary mb-1">Daftar Buku</a>
+            @unless(Auth::user()->role === 'konsumen')
     @if($rakId)
         {{-- 🔹 Jika ada rakId, maka tombol Rak akan kembali ke show rak asal --}}
         <a href="{{ route('raks.show', $rakId) }}" class="btn btn-primary mb-1">Rak</a>
@@ -40,6 +41,7 @@
         {{-- 🔹 Jika tidak ada rakId, fallback ke index semua rak --}}
         <a href="{{ route('raks.index') }}" class="btn btn-primary mb-1">Rak</a>
     @endif
+            @endunless
     </div>
     </div>
     </div>
@@ -114,7 +116,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="7" class="text-center">Belum ada item untuk buku ini</td>
+                    <td colspan="8" class="text-center">Belum ada item untuk buku ini</td>
                 </tr>
             @endforelse
             </tbody>

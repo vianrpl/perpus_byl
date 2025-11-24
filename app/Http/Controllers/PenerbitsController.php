@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\penerbits;
+use App\Models\bukus; // TAMBAHKAN INI
 use Illuminate\Http\Request;
 
 class PenerbitsController extends Controller
@@ -17,7 +18,7 @@ class PenerbitsController extends Controller
             $query->where('id_penerbit', 'like', "%{$search}%")
                 ->orWhere('nama_penerbit', 'like', "%{$search}%");
         })
-            ->orderBy('id_penerbit', 'asc') // Ganti 'id_item' dengan kolom yang sesuai, misalnya 'id_penerbit'
+            ->orderBy('id_penerbit', 'asc')
             ->paginate(10)
             ->withQueryString();
 
@@ -46,7 +47,7 @@ class PenerbitsController extends Controller
 
         penerbits::create($data);
         return redirect()->route('penerbits.index')
-            ->with('success','data penerbits berhasil di tambahkan.');
+            ->with('success','Data penerbit berhasil ditambahkan.');
     }
 
     /**
@@ -54,7 +55,7 @@ class PenerbitsController extends Controller
      */
     public function show(penerbits $penerbit)
     {
-        return view('penerbits.show',compact('penerbit'));
+        return view('penerbits.show', compact('penerbit'));
     }
 
     /**
@@ -62,7 +63,7 @@ class PenerbitsController extends Controller
      */
     public function edit(penerbits $penerbit)
     {
-        return view('penerbits.edit',compact('penerbit'));
+        return view('penerbits.edit', compact('penerbit'));
     }
 
     /**
@@ -79,7 +80,7 @@ class PenerbitsController extends Controller
 
         $penerbit->update($data);
         return redirect()->route('penerbits.index')
-            ->with('success','data penerbits berhasil diperbarui');
+            ->with('success','Data penerbit berhasil diperbarui');
     }
 
     /**
@@ -89,6 +90,45 @@ class PenerbitsController extends Controller
     {
         $penerbit->delete();
         return redirect()->route('penerbits.index')
-            ->with('success','data penerbit berhasil di hapus');
+            ->with('success','Data penerbit berhasil dihapus');
+    }
+
+    /**
+     * Get bukus by penerbit dengan pagination
+     */
+    public function getBukus($id_penerbit, Request $request)
+    {
+        try {
+            // Cari penerbit
+            $penerbit = penerbits::findOrFail($id_penerbit);
+
+            // Ambil buku dengan relasi
+            $bukus = bukus::with(['penerbits', 'kategoris', 'sub_kategoris'])
+                ->where('id_penerbit', $id_penerbit)
+                ->orderBy('judul', 'asc')
+                ->paginate(5);
+
+            return response()->json([
+                'success' => true,
+                'penerbits' => [
+                    'id_penerbit' => $penerbit->id_penerbit,
+                    'nama_penerbit' => $penerbit->nama_penerbit
+                ],
+                'bukus' => $bukus->items(),
+                'pagination' => [
+                    'current_page' => $bukus->currentPage(),
+                    'last_page' => $bukus->lastPage(),
+                    'per_page' => $bukus->perPage(),
+                    'total' => $bukus->total()
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            // Tangkap error dan return JSON
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

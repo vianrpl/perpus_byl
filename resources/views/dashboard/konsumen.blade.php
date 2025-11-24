@@ -71,15 +71,17 @@
             </nav>
 
             {{-- Cards Row dengan gap (g-4 = 24px jarak) --}}
+            {{-- ✅ CARDS ROW - CUMA DAFTAR BUKU & PROFIL --}}
             <div class="row g-4 mb-5 justify-content-center">
-                {{-- Daftar Buku --}}
-                <div class="col-lg-4 col-md-6">
+
+                {{-- 📚 Daftar Buku --}}
+                <div class="col-lg-6 col-md-6">
                     <div class="dashboard-card card-gradient-primary h-100">
                         <div class="card-body d-flex flex-column">
                             <div class="d-flex justify-content-between align-items-start mb-3">
                                 <div>
                                     <h5 class="card-title fw-bold mb-1">Daftar Buku</h5>
-                                    <p class="card-text text-white-50 small mb-0">Semua koleksi buku tersedia</p>
+                                    <p class="card-text text-white-50 small mb-0">Lihat semua koleksi buku perpustakaan</p>
                                 </div>
                                 <div class="card-icon">
                                     <i class="fas fa-book"></i>
@@ -87,122 +89,35 @@
                             </div>
                             <div class="mt-auto">
                                 <a href="{{ route('bukus.index') }}" class="btn btn-light btn-sm rounded-pill">
-                                    Lihat <i class="fas fa-arrow-right ms-1"></i>
+                                    Lihat Koleksi <i class="fas fa-arrow-right ms-1"></i>
                                 </a>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {{-- Rak --}}
-                <div class="col-lg-4 col-md-6">
+                {{-- 👤 Profil --}}
+                <div class="col-lg-6 col-md-6">
                     <div class="dashboard-card card-gradient-success h-100">
                         <div class="card-body d-flex flex-column">
                             <div class="d-flex justify-content-between align-items-start mb-3">
                                 <div>
-                                    <h5 class="card-title fw-bold mb-1">Rak</h5>
-                                    <p class="card-text text-white-50 small mb-0">Daftar rak penyimpanan buku</p>
+                                    <h5 class="card-title fw-bold mb-1">Profil Saya</h5>
+                                    <p class="card-text text-white-50 small mb-0">Kelola informasi akun kamu</p>
                                 </div>
                                 <div class="card-icon">
-                                    <i class="fas fa-archive"></i>
+                                    <i class="fas fa-user-circle"></i>
                                 </div>
                             </div>
                             <div class="mt-auto">
-                                <a href="{{ route('raks.index') }}" class="btn btn-light btn-sm rounded-pill">
-                                    Lihat <i class="fas fa-arrow-right ms-1"></i>
+                                <a href="{{ route('profile.edit') }}" class="btn btn-light btn-sm rounded-pill">
+                                    Lihat Profil <i class="fas fa-arrow-right ms-1"></i>
                                 </a>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {{-- Lokasi Rak --}}
-                <div class="col-lg-4 col-md-6">
-                    <div class="dashboard-card card-gradient-danger h-100">
-                        <div class="card-body d-flex flex-column">
-                            <div class="d-flex justify-content-between align-items-start mb-3">
-                                <div>
-                                    <h5 class="card-title fw-bold mb-1">Lokasi Rak</h5>
-                                    <p class="card-text text-white-50 small mb-0">Lokasi tiap rak buku</p>
-                                </div>
-                                <div class="card-icon">
-                                    <i class="fas fa-map-marker-alt"></i>
-                                </div>
-                            </div>
-                            <div class="mt-auto">
-                                <a href="{{ route('lokasi_raks.index') }}" class="btn btn-light btn-sm rounded-pill">
-                                    Lihat <i class="fas fa-arrow-right ms-1"></i>
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {{-- Penerbit --}}
-                <div class="col-lg-4 col-md-6">
-                    <div class="dashboard-card card-gradient-warning h-100">
-                        <div class="card-body d-flex flex-column">
-                            <div class="d-flex justify-content-between align-items-start mb-3">
-                                <div>
-                                    <h5 class="card-title fw-bold mb-1">Penerbit</h5>
-                                    <p class="card-text text-white-50 small mb-0">Daftar penerbit buku</p>
-                                </div>
-                                <div class="card-icon">
-                                    <i class="fas fa-building"></i>
-                                </div>
-                            </div>
-                            <div class="mt-auto">
-                                <a href="{{ route('penerbits.index') }}" class="btn btn-light btn-sm rounded-pill">
-                                    Lihat <i class="fas fa-arrow-right ms-1"></i>
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {{-- Kategori --}}
-                <div class="col-lg-4 col-md-6">
-                    <div class="dashboard-card card-gradient-info h-100">
-                        <div class="card-body d-flex flex-column">
-                            <div class="d-flex justify-content-between align-items-start mb-3">
-                                <div>
-                                    <h5 class="card-title fw-bold mb-1">Kategori</h5>
-                                    <p class="card-text text-white-50 small mb-0">Kategori utama koleksi buku</p>
-                                </div>
-                                <div class="card-icon">
-                                    <i class="fas fa-tags"></i>
-                                </div>
-                            </div>
-                            <div class="mt-auto">
-                                <a href="{{ route('kategoris.index') }}" class="btn btn-light btn-sm rounded-pill">
-                                    Lihat <i class="fas fa-arrow-right ms-1"></i>
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {{-- Sub Kategori --}}
-                <div class="col-lg-4 col-md-6">
-                    <div class="dashboard-card card-gradient-secondary h-100">
-                        <div class="card-body d-flex flex-column">
-                            <div class="d-flex justify-content-between align-items-start mb-3">
-                                <div>
-                                    <h5 class="card-title fw-bold mb-1">Sub Kategori</h5>
-                                    <p class="card-text text-white-50 small mb-0">Detail sub kategori buku</p>
-                                </div>
-                                <div class="card-icon">
-                                    <i class="fas fa-list"></i>
-                                </div>
-                            </div>
-                            <div class="mt-auto">
-                                <a href="{{ route('sub_kategoris.index') }}" class="btn btn-light btn-sm rounded-pill">
-                                    Lihat <i class="fas fa-arrow-right ms-1"></i>
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
             </div>
 
             {{-- About Section --}}

@@ -15,6 +15,7 @@ use App\Http\Controllers\PenataanBukusController;
 use App\Http\Controllers\PeminjamanController;
 use App\Http\Controllers\MemberController;
 use App\Http\Controllers\AdminMemberController;
+use App\Models\bukus;
 
 Route::get('/get-rak-by-buku/{id_buku}', [App\Http\Controllers\PenataanBukusController::class, 'getRakByBuku']);
 Route::get('/raks/{id_rak}', [RaksController::class, 'show'])->name('raks.show');
@@ -57,6 +58,13 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/peminjaman/bukus', [PeminjamanController::class, 'getBukusForSelection'])->name('peminjaman.getBukus');
     Route::get('/get-eksemplar-by-buku/{id_buku}', [PeminjamanController::class, 'getEksemplarByBuku'])->name('peminjaman.getEksemplar');
     Route::get('/peminjaman/members', [PeminjamanController::class, 'getMembersForSelection'])->name('peminjaman.getMembers');
+
+    // ============================
+    // ROUTE BARU: SCAN BARCODE
+    // ============================
+    Route::post('/peminjaman/scan-barcode', [PeminjamanController::class, 'scanBarcode'])->name('peminjaman.scanBarcode');
+
+
     // ==========================
     // ADMIN / PETUGAS (KELOLA REQUEST)
     // ==========================
@@ -96,7 +104,12 @@ Route::middleware(['auth'])->group(function () {
 // ROUTE UMUM
 // ==========================
 Route::get('/', function () {
-    return view('welcome');
+    // Ambil semua buku dengan pagination
+    $bukus = bukus::with(['penerbits', 'kategoris', 'sub_kategoris'])
+        ->orderBy('id_buku', 'desc')
+        ->paginate(10);
+
+    return view('welcome', compact('bukus'));
 });
 
 
@@ -118,6 +131,17 @@ Route::middleware(['auth', 'role:admin,petugas,konsumen'])->group(function () {
     Route::resource('bukus.items', BukuItemsController::class);
 
     Route::resource('penataan_bukus', PenataanBukusController::class);
+
+    Route::get('/kategoris/{id}/sub-kategoris', [KategorisController::class, 'getSubKategoris'])
+        ->name('kategoris.sub_kategoris');
+
+    Route::get('/sub_kategoris/{id}/kategoris', [SubKategorisController::class, 'getKategoris'])
+        ->name('sub_kategoris.kategoris');
+    Route::get('/sub_kategoris/all-kategoris', [SubKategorisController::class, 'getAllKategoris'])
+        ->name('sub_kategoris.all_kategoris');
+
+    Route::get('/penerbits/{id}/bukus', [PenerbitsController::class, 'getBukus'])
+        ->name('penerbits.bukus');
 
 });
 

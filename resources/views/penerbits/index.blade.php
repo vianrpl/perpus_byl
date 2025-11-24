@@ -45,6 +45,12 @@
                         <td>{{ ($penerbits->currentPage() - 1) * $penerbits->perPage() + $loop->iteration }}</td>
                         <td>{{ $penerbit->nama_penerbit }}</td>
                         <td>
+                            <!-- Tombol Buku (BARU) -->
+                            <button type="button" class="btn btn-success btn-sm"
+                                    onclick="loadBukusPenerbit({{ $penerbit->id_penerbit }}, '{{ $penerbit->nama_penerbit }}')">
+                                Buku
+                            </button>
+
                             <!-- Tombol lihat -->
                             <button type="button" class="btn btn-info btn-sm"
                                     data-bs-toggle="modal"
@@ -208,6 +214,196 @@
         @endforeach
         <!-- end modal lihat-->
 
+        {{-- Modal Daftar Buku Penerbit --}}
+        <div class="modal fade" id="modalBukusPenerbit" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered modal-xl">
+                <div class="modal-content">
+                    <div class="modal-header bg-success text-white">
+                        <h5 class="modal-title">Daftar Buku dari Penerbit: <span id="namaPenerbitBuku"></span></h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        {{-- Loading State --}}
+                        <div id="loadingBukusPenerbit" class="text-center py-4">
+                            <div class="spinner-border text-success" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="mt-2">Memuat data buku...</p>
+                        </div>
+
+                        {{-- Content --}}
+                        <div id="contentBukusPenerbit" style="display:none;">
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-hover">
+                                    <thead class="table-light">
+                                    <tr>
+                                        <th>No</th>
+                                        <th>Judul</th>
+                                        <th>Pengarang</th>
+                                        <th>Kategori</th>
+                                        <th>Sub Kategori</th>
+                                        <th>Tahun</th>
+                                        <th>Stok</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody id="tableBodyBukusPenerbit">
+                                    {{-- Data akan dimuat via JavaScript --}}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {{-- Pagination --}}
+                            <div id="paginationBukusPenerbit" class="d-flex justify-content-center mt-3">
+                                {{-- Pagination akan dimuat via JavaScript --}}
+                            </div>
+
+                            {{-- Pesan Kosong --}}
+                            <div id="emptyBukusPenerbit" style="display:none;" class="alert alert-info text-center">
+                                <i class="bi bi-inbox"></i> Penerbit ini belum memiliki buku
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- JavaScript untuk Load Bukus Penerbit --}}
+        <script>
+            let currentPenerbitId = null;
+            let currentPageBuku = 1;
+
+            function loadBukusPenerbit(id_penerbit, nama_penerbit) {
+                console.log('Load buku untuk penerbit:', id_penerbit, nama_penerbit); // Debug
+
+                currentPenerbitId = id_penerbit;
+                currentPageBuku = 1;
+
+                // Set nama penerbit di modal
+                document.getElementById('namaPenerbitBuku').textContent = nama_penerbit;
+
+                // Show modal
+                const modal = new bootstrap.Modal(document.getElementById('modalBukusPenerbit'));
+                modal.show();
+
+                // Show loading, hide content
+                document.getElementById('loadingBukusPenerbit').style.display = 'block';
+                document.getElementById('contentBukusPenerbit').style.display = 'none';
+
+                // Fetch data
+                fetchBukusPenerbitData(1);
+            }
+
+            function fetchBukusPenerbitData(page) {
+                currentPageBuku = page;
+
+                const url = `/penerbits/${currentPenerbitId}/bukus?page=${page}`;
+                console.log('Fetching URL:', url); // Debug
+
+                fetch(url, {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    }
+                })
+                    .then(response => {
+                        console.log('Response status:', response.status); // Debug
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok');
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        console.log('Data received:', data); // Debug
+
+                        // Hide loading
+                        document.getElementById('loadingBukusPenerbit').style.display = 'none';
+                        document.getElementById('contentBukusPenerbit').style.display = 'block';
+
+                        const tbody = document.getElementById('tableBodyBukusPenerbit');
+                        tbody.innerHTML = '';
+
+                        if (data.bukus && data.bukus.length > 0) {
+                            document.getElementById('emptyBukusPenerbit').style.display = 'none';
+
+                            data.bukus.forEach((buku, index) => {
+                                const row = `
+                    <tr>
+                        <td>${(currentPageBuku - 1) * 5 + index + 1}</td>
+                        <td>${buku.judul || '-'}</td>
+                        <td>${buku.pengarang || '-'}</td>
+                        <td>${buku.kategoris ? buku.kategoris.nama_kategori : '-'}</td>
+                        <td>${buku.sub_kategoris ? buku.sub_kategoris.nama_sub_kategori : '-'}</td>
+                        <td>${buku.tahun_terbit || '-'}</td>
+                        <td><span class="badge bg-primary">${buku.jumlah || 0}</span></td>
+                    </tr>
+                `;
+                                tbody.innerHTML += row;
+                            });
+
+                            // Render pagination jika ada
+                            if (data.pagination) {
+                                renderPaginationBukuPenerbit(data.pagination);
+                            }
+                        } else {
+                            document.getElementById('emptyBukusPenerbit').style.display = 'block';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        document.getElementById('loadingBukusPenerbit').style.display = 'none';
+                        document.getElementById('contentBukusPenerbit').style.display = 'block';
+                        document.getElementById('emptyBukusPenerbit').style.display = 'block';
+                        document.getElementById('emptyBukusPenerbit').innerHTML = `
+            <i class="bi bi-exclamation-triangle"></i>
+            Terjadi kesalahan saat mengambil data: ${error.message}
+        `;
+                    });
+            }
+
+            function renderPaginationBukuPenerbit(pagination) {
+                const container = document.getElementById('paginationBukusPenerbit');
+                container.innerHTML = '';
+
+                if (!pagination || pagination.last_page <= 1) return;
+
+                let html = '<nav><ul class="pagination pagination-sm mb-0">';
+
+                // Previous button
+                html += `
+        <li class="page-item ${pagination.current_page === 1 ? 'disabled' : ''}">
+            <a class="page-link" href="#" onclick="fetchBukusPenerbitData(${pagination.current_page - 1}); return false;">
+                Previous
+            </a>
+        </li>
+    `;
+
+                // Page numbers
+                for (let i = 1; i <= pagination.last_page; i++) {
+                    html += `
+            <li class="page-item ${i === pagination.current_page ? 'active' : ''}">
+                <a class="page-link" href="#" onclick="fetchBukusPenerbitData(${i}); return false;">
+                    ${i}
+                </a>
+            </li>
+        `;
+                }
+
+                // Next button
+                html += `
+        <li class="page-item ${pagination.current_page === pagination.last_page ? 'disabled' : ''}">
+            <a class="page-link" href="#" onclick="fetchBukusPenerbitData(${pagination.current_page + 1}); return false;">
+                Next
+            </a>
+        </li>
+    `;
+
+                html += '</ul></nav>';
+                container.innerHTML = html;
+            }
+        </script>
     @endforeach
 @endsection
 

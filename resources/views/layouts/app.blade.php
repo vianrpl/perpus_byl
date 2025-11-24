@@ -219,6 +219,40 @@
         .icon-buku { color: #ffd93d; }
         .icon-eksemplar { color: #ff6b6b; }
         .icon-check { color: #38ef7d; }
+
+        /* ===========================================
+            🔥 SCROLL HORIZONTAL UNTUK TABEL DI HP
+        =========================================== */
+        .table-responsive-wrapper {
+            width: 100%;
+            overflow-x: auto; /* Biar bisa scroll kanan-kiri */
+            -webkit-overflow-scrolling: touch; /* Smooth scrolling di iOS */
+        }
+
+        /* Biar tabel ga terlalu kecil di HP */
+        .table-responsive-wrapper table {
+            min-width: 800px; /* Minimal lebar tabel */
+            width: 100%;
+        }
+
+        /* Styling scrollbar biar keren (opsional) */
+        .table-responsive-wrapper::-webkit-scrollbar {
+            height: 8px;
+        }
+
+        .table-responsive-wrapper::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+
+        .table-responsive-wrapper::-webkit-scrollbar-thumb {
+            background: #667eea;
+            border-radius: 10px;
+        }
+
+        .table-responsive-wrapper::-webkit-scrollbar-thumb:hover {
+            background: #764ba2;
+        }
     </style>
 </head>
 <body class="hold-transition
@@ -278,40 +312,7 @@
         <ul class="navbar-nav ms-auto align-items-center">
 
             {{-- 🔹 Dropdown Profil --}}
-            <li class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle" href="#" id="profileDropdown" role="button" data-bs-toggle="dropdown">
-                    <i class="fas fa-user-circle"></i> {{ Auth::user()->name }}
 
-                    {{-- 🔹 Badge Status (khusus konsumen) --}}
-                    @if(Auth::user()->role === 'konsumen')
-                        @if(Auth::user()->is_member)
-                            <span class="badge bg-success">Member Aktif</span>
-                        @elseif(Auth::user()->is_verified_member)
-                            <span class="badge bg-warning text-dark">Terverifikasi</span>
-                        @else
-                            <span class="badge bg-secondary">Non-Member</span>
-                        @endif
-                    @else
-                        {{-- Untuk admin/petugas, bisa tampilkan role --}}
-                        <span class="badge bg-info text-dark text-capitalize">{{ Auth::user()->role }}</span>
-                    @endif
-                </a>
-                <ul class="dropdown-menu dropdown-menu-end">
-                    <li>
-                        <a class="dropdown-item" href="{{ route('profile.edit') }}">
-                            <i class="fas fa-user"></i> Profil
-                        </a>
-                    </li>
-                    <li>
-                        <form method="POST" action="{{ route('logout') }}">
-                            @csrf
-                            <button type="submit" class="dropdown-item text-danger">
-                                <i class="fas fa-sign-out-alt"></i> Logout
-                            </button>
-                        </form>
-                    </li>
-                </ul>
-            </li>
         </ul>
     </nav>
 
@@ -339,6 +340,9 @@
                             <p>Daftar Buku</p>
                         </a>
                     </li>
+
+                    {{-- ✅ MENU KHUSUS ADMIN & PETUGAS DOANG --}}
+                    @if(in_array(Auth::user()->role, ['admin', 'petugas']))
 
                     <li class="nav-item">
                         <a href="{{ route('penerbits.index') }}" class="nav-link {{ Request::is('penerbits*') ? 'active' : '' }}">
@@ -390,7 +394,7 @@
                     </li>
 
                     <div class="menu-title">Sistem</div>
-
+                    @endif
                     @if(Auth::user()->role === 'admin')
                         <li class="nav-item">
                             <a href="{{ route('users.index') }}" class="nav-link {{ Request::is('users*') ? 'active' : '' }}">
@@ -400,12 +404,6 @@
                         </li>
                     @endif
 
-                    <li class="nav-item">
-                        <a href="{{ route('profile.edit') }}" class="nav-link {{ Request::is('profile*') ? 'active' : '' }}">
-                            <i class="nav-icon fas fa-user"></i>
-                            <p>Profil</p>
-                        </a>
-                    </li>
                     @if(in_array(Auth::user()->role, ['admin', 'petugas']))
                     <div class="menu-title">Transaksi</div>
                     <li class="nav-item">
@@ -429,6 +427,12 @@
                         </li>
                     @endif
 
+                        <li class="nav-item">
+                            <a href="{{ route('profile.edit') }}" class="nav-link {{ Request::is('profile*') ? 'active' : '' }}">
+                                <i class="nav-icon fas fa-user"></i>
+                                <p>Profil</p>
+                            </a>
+                        </li>
 
                 </ul>
             </nav>
@@ -440,6 +444,7 @@
     <div class="content-wrapper">
         <section class="content pt-4">
             <div class="container-fluid">
+                <div class="table-responsive-wrapper">
                 @yield('content')
             </div>
         </section>

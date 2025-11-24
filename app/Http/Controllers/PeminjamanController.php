@@ -15,25 +15,84 @@ class PeminjamanController extends Controller
     // =====================================================
     // INDEX - Menampilkan semua peminjaman
     // =====================================================
+    // =====================================================
+// INDEX - Menampilkan semua peminjaman
+// FIXED: Search bisa pakai barcode, nama peminjam, judul, user
+// KOMPATIBEL MARIADB (tanpa JSON_CONTAINS yang bikin error)
+// =====================================================
     public function index(Request $request)
     {
+        // Ambil keyword search dari URL
         $search = $request->input('search');
 
-        $peminjaman = Peminjaman::with(['user', 'bukus'])
-            ->orderBy('id_peminjaman', 'asc')
-            ->when($search, function ($query, $search) {
-                $query->whereHas('user', function ($q) use ($search) {
-                    $q->where('name', 'like', "%{$search}%");
-                })->orWhere('no_transaksi', 'like', "%{$search}%")
-                    ->orWhere('nama_peminjam', 'like', "%{$search}%")
-                    ->orWhereHas('bukus', function ($q) use ($search) {
-                        $q->where('judul', 'like', '%' . $search . '%');
-                    });
-            })
-            ->paginate(10)
-            ->withQueryString();
+        // Query dasar: ambil peminjaman + relasi user & bukus
+        $query = Peminjaman::with(['user', 'bukus'])
+            ->orderBy('id_peminjaman', 'asc');
 
-        // Set loan_items dengan tanggal yang benar per-record
+        // Kalau ada search keyword, filter datanya
+        if ($search) {
+
+            // ===== STEP 1: Cari barcode eksemplar yang cocok =====
+            // Misal user search "2025111505002001", kita cari dulu di table buku_items
+            $matchingItemIds = buku_items::where('barcode', 'like', "%{$search}%")
+                ->pluck('id_item') // Ambil cuma id_item nya aja
+                ->toArray();
+
+            // ===== STEP 2: Cari peminjaman yang punya item tersebut =====
+            // Karena id_items di peminjaman itu JSON array kayak ["2","28"]
+            // Kita pake LIKE aja biar kompatibel sama MariaDB
+            $peminjamanIdsByBarcode = [];
+
+            if (!empty($matchingItemIds)) {
+                // Loop setiap item yang ketemu
+                foreach ($matchingItemIds as $itemId) {
+                    // Cari peminjaman yang id_items nya mengandung itemId ini
+                    // Format JSON: ["2","28"] atau [2,28]
+                    $found = Peminjaman::where('id_items', 'like', '%"' . $itemId . '"%') // "2"
+                    ->orWhere('id_items', 'like', '%[' . $itemId . ']%')  // [2]
+                    ->orWhere('id_items', 'like', '%[' . $itemId . ',%') // [2,
+                    ->orWhere('id_items', 'like', '%,' . $itemId . ']%') // ,2]
+                    ->orWhere('id_items', 'like', '%,' . $itemId . ',%') // ,2,
+                    ->pluck('id_peminjaman')
+                        ->toArray();
+
+                    // Gabung hasil ke array
+                    $peminjamanIdsByBarcode = array_merge($peminjamanIdsByBarcode, $found);
+                }
+                // Hapus duplikat
+                $peminjamanIdsByBarcode = array_unique($peminjamanIdsByBarcode);
+            }
+
+            // ===== STEP 3: Gabungkan semua kondisi search =====
+            $query->where(function($q) use ($search, $peminjamanIdsByBarcode) {
+
+                // Search by NAMA PEMINJAM
+                $q->where('nama_peminjam', 'like', "%{$search}%")
+
+                    // Search by NO TRANSAKSI
+                    ->orWhere('no_transaksi', 'like', "%{$search}%")
+
+                    // Search by USER YANG PROSES (relasi ke table users)
+                    ->orWhereHas('user', function ($subQ) use ($search) {
+                        $subQ->where('name', 'like', "%{$search}%");
+                    })
+
+                    // Search by JUDUL BUKU (relasi ke table bukus)
+                    ->orWhereHas('bukus', function ($subQ) use ($search) {
+                        $subQ->where('judul', 'like', "%{$search}%");
+                    });
+
+                // Search by BARCODE EKSEMPLAR (dari hasil step 1-2)
+                if (!empty($peminjamanIdsByBarcode)) {
+                    $q->orWhereIn('id_peminjaman', $peminjamanIdsByBarcode);
+                }
+            });
+        }
+
+        // Pagination 10 per halaman
+        $peminjaman = $query->paginate(10)->withQueryString();
+
+        // Set loan_items untuk setiap peminjaman (buat modal lihat buku)
         foreach ($peminjaman as $p) {
             $p->loan_items = $this->getItemsForLoan($p);
         }
@@ -524,5 +583,87 @@ class PeminjamanController extends Controller
         }
 
         return response()->json(['active' => $activeItemCount]);
+    }
+
+    // =====================================================
+// SCAN BARCODE - Cari eksemplar berdasarkan barcode scan
+// METHOD BARU untuk fitur scan barcode
+// =====================================================
+    // =====================================================
+// SCAN BARCODE - Method baru untuk fitur scan di modal pinjam
+// Bisa scan barcode eksemplar ATAU ISBN buku
+// =====================================================
+    public function scanBarcode(Request $request)
+    {
+        // Ambil barcode dari request, hapus spasi
+        $barcode = trim($request->input('barcode'));
+
+        // Validasi: barcode gak boleh kosong
+        if (empty($barcode)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Barcode tidak boleh kosong bro!'
+            ]);
+        }
+
+        // ===== CARI EXACT MATCH DULU =====
+        // Misal scan "2025111505002001", cari yang persis sama
+        $item = buku_items::with('bukus')
+            ->where('status', 'tersedia')  // Cuma yang statusnya tersedia
+            ->where('barcode', $barcode)   // Barcode harus sama persis
+            ->first();
+
+        // ===== KALAU GAK KETEMU, COBA CARI PAKAI LIKE ATAU ISBN =====
+        if (!$item) {
+            $item = buku_items::with('bukus')
+                ->where('status', 'tersedia')
+                ->where(function($q) use ($barcode) {
+                    // Cari barcode yang mirip
+                    $q->where('barcode', 'like', "%{$barcode}%")
+                        // Atau cari ISBN buku yang sama
+                        ->orWhereHas('bukus', function($subQ) use ($barcode) {
+                            $subQ->where('isbn', $barcode);
+                        });
+                })
+                ->first();
+        }
+
+        // ===== KALAU TETEP GAK KETEMU =====
+        if (!$item) {
+            // Cek apakah barcode ada tapi statusnya gak tersedia (lagi dipinjam)
+            $itemExists = buku_items::with('bukus')
+                ->where(function($q) use ($barcode) {
+                    $q->where('barcode', $barcode)
+                        ->orWhere('barcode', 'like', "%{$barcode}%");
+                })
+                ->first();
+
+            // Kalau ada tapi lagi dipinjam
+            if ($itemExists) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Buku '{$itemExists->bukus->judul}' (Barcode: {$itemExists->barcode}) lagi {$itemExists->status} bro!"
+                ]);
+            }
+
+            // Kalau emang gak ada sama sekali
+            return response()->json([
+                'success' => false,
+                'message' => "Barcode '{$barcode}' gak ketemu bro!"
+            ]);
+        }
+
+        // ===== KETEMU! RETURN DATANYA =====
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'id_item' => $item->id_item,
+                'id_buku' => $item->id_buku,
+                'barcode' => $item->barcode,
+                'kondisi' => $item->kondisi,
+                'judul' => $item->bukus->judul ?? 'Gak diketahui',
+                'isbn' => $item->bukus->isbn ?? '-'
+            ]
+        ]);
     }
 }
