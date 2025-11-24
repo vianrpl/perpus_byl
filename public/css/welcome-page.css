@@ -1,0 +1,329 @@
+/* =====================================================
+   FILE: public/css/welcome-page.css
+   STYLE KHUSUS WELCOME PAGE
+   Desain: Clean, Modern, Library Vibes
+   ===================================================== */
+
+/* ===== GLOBAL SETUP ===== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    padding: 2rem 1rem;
+}
+
+/* ===== CONTAINER UTAMA ===== */
+.welcome-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    overflow: hidden;
+    animation: fadeIn 0.8s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ===== HEADER ===== */
+.welcome-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 3rem 2rem;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.welcome-header::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect x="10" y="20" width="12" height="60" fill="white" opacity="0.05"/><rect x="25" y="15" width="10" height="70" fill="white" opacity="0.05"/><rect x="40" y="25" width="15" height="50" fill="white" opacity="0.05"/><rect x="60" y="18" width="11" height="64" fill="white" opacity="0.05"/><rect x="75" y="22" width="13" height="56" fill="white" opacity="0.05"/></svg>');
+    background-size: 150px 150px;
+    opacity: 0.3;
+}
+.welcome-header h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    position: relative;
+    z-index: 1;
+}
+.welcome-header p {
+    font-size: 1.1rem;
+    opacity: 0.9;
+    position: relative;
+    z-index: 1;
+}
+/* ===== SEARCH BOX ===== */
+.search-section {
+    padding: 2rem;
+    background: #f8f9fa;
+    border-bottom: 1px solid #e9ecef;
+}
+.search-form {
+    max-width: 600px;
+    margin: 0 auto;
+    position: relative;
+}
+.search-input {
+    width: 100%;
+    padding: 1rem 3.5rem 1rem 1.5rem;
+    border: 2px solid #e2e8f0;
+    border-radius: 50px;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    background: white;
+}
+.search-input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+}
+.search-btn {
+    position: absolute;
+    right: 0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    color: white;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+.search-btn:hover {
+    transform: translateY(-50%) scale(1.1);
+    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
+
+/* ===== TABEL ===== */
+
+.table-section {
+padding: 2rem;
+overflow-x: auto; /* scroll horizontal*/
+}
+
+.books-table {
+    width: 100%;
+    min-width: 800px; /* ✅ MINIMAL LEBAR TABEL (biar ga kepotong di HP) */
+    border-collapse: separate;
+    border-spacing: 0;
+}
+.books-table thead {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+.books-table thead th {
+    color: white;
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    padding: 1rem;
+    text-align: left;
+    white-space: nowrap;
+    letter-spacing: 0.5px;
+}
+.books-table thead th:first-child {
+    border-top-left-radius: 10px;
+}
+.books-table thead th:last-child {
+    border-top-right-radius: 10px;
+}
+.books-table tbody tr {
+    transition: all 0.3s ease;
+    border-bottom: 1px solid #f1f3f5;
+}
+.books-table tbody tr:hover {
+    background: linear-gradient(135deg, #f8f9ff 0%, #f0f2ff 100%);
+    transform: scale(1.005);
+}
+.books-table tbody td {
+    padding: 1rem;
+    color: #4a5568;
+    font-size: 0.95rem;
+}
+/* Badge stok */
+.stock-badge {
+    padding: 0.375rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+.stock-available {
+    background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+    color: #065f46;
+}
+.stock-low {
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    color: #92400e;
+}
+.stock-empty {
+    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+    color: #991b1b;
+}
+/* ===== PAGINATION ===== */
+.pagination-section {
+    padding: 1.5rem 2rem;
+    background: #f8f9fa;
+    border-top: 1px solid #e9ecef;
+    display: flex;
+    justify-content: center;
+}
+.pagination {
+    display: flex;
+    gap: 0.5rem;
+    list-style: none;
+}
+.pagination .page-item {
+    display: inline-block;
+}
+.pagination .page-link {
+    padding: 0.625rem 1rem;
+    border-radius: 10px;
+    border: 2px solid #e2e8f0;
+    color: #4a5568;
+    text-decoration: none;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+.pagination .page-link:hover {
+    border-color: #667eea;
+    background: rgba(102, 126, 234, 0.1);
+    transform: translateY(-2px);
+}
+.pagination .page-item.active .page-link {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-color: #667eea;
+    color: white;
+}
+.pagination .page-item.disabled .page-link {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+/* ===== FOOTER CTA ===== */
+.cta-section {
+    padding: 3rem 2rem;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    text-align: center;
+    color: white;
+}
+.cta-section h2 {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+}
+.cta-section p {
+    font-size: 1.1rem;
+    opacity: 0.9;
+    margin-bottom: 2rem;
+}
+.cta-buttons {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+.btn-cta {
+    padding: 0.875rem 2rem;
+    border-radius: 50px;
+    font-weight: 600;
+    font-size: 1rem;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.btn-cta-primary {
+    background: white;
+    color: #667eea;
+}
+.btn-cta-primary:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 30px rgba(255,255,255,0.3);
+}
+.btn-cta-outline {
+    background: transparent;
+    color: white;
+    border: 2px solid white;
+}
+.btn-cta-outline:hover {
+    background: white;
+    color: #667eea;
+    transform: translateY(-3px);
+}
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+    .welcome-header h1 {
+        font-size: 1.75rem;
+    }
+    .welcome-header p {
+        font-size: 1rem;
+    }
+
+    .search-section {
+        padding: 1.5rem 1rem;
+    }
+
+    .table-section {
+        padding: 1rem;
+    }
+
+    .books-table thead th,
+    .books-table tbody td {
+        padding: 0.75rem;
+        font-size: 0.875rem;
+    }
+
+    .cta-section h2 {
+        font-size: 1.5rem;
+    }
+
+    .cta-buttons {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .btn-cta {
+        justify-content: center;
+    }
+}
+/* ===== EMPTY STATE (Kalau ga ada buku) ===== */
+.empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: #718096;
+}
+.empty-state i {
+    font-size: 4rem;
+    color: #cbd5e0;
+    margin-bottom: 1rem;
+}
+.empty-state h3 {
+    font-size: 1.5rem;
+    color: #4a5568;
+    margin-bottom: 0.5rem;
+}
+.empty-state p {
+    font-size: 1rem;
+}
+

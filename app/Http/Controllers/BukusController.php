@@ -166,4 +166,38 @@ class BukusController extends Controller
     }
 
     // ... (method lain)
+
+    /**
+     * Method khusus buat welcome page dengan fitur search
+     * Dipanggil dari halaman welcome (/)
+     */
+    public function welcomeSearch(Request $request)
+    {
+        // Query dasar: ambil semua buku dengan relasi
+        $query = bukus::with(['penerbits', 'kategoris', 'sub_kategoris']);
+
+        // ✅ CEK APAKAH ADA KEYWORD PENCARIAN
+        if ($request->filled('search')) {
+            $searchTerm = $request->search;
+
+            // Cari di 5 kolom: judul, pengarang, penerbit, kategori, tahun
+            $query->where(function($q) use ($searchTerm) {
+                $q->where('judul', 'LIKE', "%{$searchTerm}%")
+                    ->orWhere('pengarang', 'LIKE', "%{$searchTerm}%")
+                    ->orWhere('tahun_terbit', 'LIKE', "%{$searchTerm}%")
+                    ->orWhereHas('penerbits', function($q) use ($searchTerm) {
+                        $q->where('nama_penerbit', 'LIKE', "%{$searchTerm}%");
+                    })
+                    ->orWhereHas('kategoris', function($q) use ($searchTerm) {
+                        $q->where('nama_kategori', 'LIKE', "%{$searchTerm}%");
+                    });
+            });
+        }
+
+        // Urutkan dari buku terbaru & pagination 10 item per halaman
+        $bukus = $query->orderBy('id_buku', 'desc')->paginate(10);
+
+        // Kirim data ke view welcome
+        return view('welcome', compact('bukus'));
+    }
 }

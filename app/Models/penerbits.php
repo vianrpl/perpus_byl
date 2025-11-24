@@ -17,6 +17,4 @@ class penerbits extends Model
     {
         return $this->hasMany(bukus::class, 'id_penerbit', 'id_penerbit');
     }
-
-
 }

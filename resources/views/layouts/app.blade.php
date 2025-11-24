@@ -392,9 +392,16 @@
                             </li>
                         </ul>
                     </li>
-
-                    <div class="menu-title">Sistem</div>
                     @endif
+                    <div class="menu-title">Sistem</div>
+
+                        <li class="nav-item">
+                            <a href="{{ route('profile.edit') }}" class="nav-link {{ Request::is('profile*') ? 'active' : '' }}">
+                                <i class="nav-icon fas fa-user"></i>
+                                <p>Profil</p>
+                            </a>
+                        </li>
+
                     @if(Auth::user()->role === 'admin')
                         <li class="nav-item">
                             <a href="{{ route('users.index') }}" class="nav-link {{ Request::is('users*') ? 'active' : '' }}">
@@ -427,13 +434,6 @@
                         </li>
                     @endif
 
-                        <li class="nav-item">
-                            <a href="{{ route('profile.edit') }}" class="nav-link {{ Request::is('profile*') ? 'active' : '' }}">
-                                <i class="nav-icon fas fa-user"></i>
-                                <p>Profil</p>
-                            </a>
-                        </li>
-
                 </ul>
             </nav>
         </div>
@@ -444,7 +444,6 @@
     <div class="content-wrapper">
         <section class="content pt-4">
             <div class="container-fluid">
-                <div class="table-responsive-wrapper">
                 @yield('content')
             </div>
         </section>
