@@ -235,6 +235,7 @@
             width: 100%;
         }
 
+
         /* Styling scrollbar biar keren (opsional) */
         .table-responsive-wrapper::-webkit-scrollbar {
             height: 8px;
@@ -462,6 +463,68 @@
 <script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js"></script>
 <script src="{{ asset('js/custom.js') }}"></script>
 @stack('scripts')
+
+<script>
+    // =====================================================
+    // ⚡ AUTO-WRAP SEMUA TABEL (Super Fast!)
+    // =====================================================
+    (function() {
+        function wrapTables() {
+            // Cari semua tabel yang belum di-wrap
+            document.querySelectorAll('table').forEach(table => {
+                // Skip kalau:
+                // 1. Udah punya wrapper
+                // 2. Ada class .no-scroll
+                // 3. Di dalam .no-wrap
+                if (table.closest('.table-responsive') ||
+                    table.closest('.table-scroll') ||
+                    table.closest('.no-scroll') ||
+                    table.closest('.no-wrap') ||
+                    table.classList.contains('no-scroll')) {
+                    return;
+                }
+
+                // Buat wrapper
+                const wrapper = document.createElement('div');
+                wrapper.className = 'table-responsive';
+
+                // Wrap tabel
+                table.parentNode.insertBefore(wrapper, table);
+                wrapper.appendChild(table);
+            });
+        }
+
+        // Run saat load
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', wrapTables);
+        } else {
+            wrapTables();
+        }
+
+        // Run lagi setelah 500ms (untuk tabel dinamis)
+        setTimeout(wrapTables, 500);
+
+        // Observer untuk tabel yang muncul via AJAX/modal
+        const observer = new MutationObserver(mutations => {
+            let hasNewTable = false;
+            mutations.forEach(mutation => {
+                mutation.addedNodes.forEach(node => {
+                    if (node.nodeType === 1 && (node.tagName === 'TABLE' || node.querySelector('table'))) {
+                        hasNewTable = true;
+                    }
+                });
+            });
+            if (hasNewTable) {
+                setTimeout(wrapTables, 100);
+            }
+        });
+
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+    })();
+</script>
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
